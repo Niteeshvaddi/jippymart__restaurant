@@ -44,7 +44,7 @@
                                     <label class="col-3 control-label">{{trans('lang.wallet_amount')}}</label>
                                     <h5 class="col-3 control-label text-primary user_wallet"><span
                                             id="wallet_balance"></span></h5>
-</div>      
+</div>
                                 <!-- Vendor Cuisines Dropdown -->
                                 <div class="form-group row">
                                     <label class="col-3 control-label">{{trans('lang.restaurant_cuisines')}}</label>
@@ -163,7 +163,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                               
+
                                 <div class="form-check width-100">
                                     <input type="checkbox" id="is_open">
                                     <label for="is_open">Open/Closed</label>
@@ -1039,7 +1039,7 @@
             }
             storevideoDuration=story_data.videoDuration;
         });
-        
+
         // Slug generation functionality
         function slugify(text) {
             return text.toString().toLowerCase()
@@ -1049,21 +1049,21 @@
                 .replace(/^-+/, '')             // Trim - from start of text
                 .replace(/-+$/, '');            // Trim - from end of text
         }
-        
+
         // Auto-generate restaurant slug when restaurant name changes
         $('.restaurant_name').on('input', function() {
             var restaurantName = $(this).val();
             var restaurantSlug = slugify(restaurantName);
             $('.restaurant_slug').val(restaurantSlug);
         });
-        
+
         // Auto-generate zone slug when zone selection changes
         $('#zone').on('change', function() {
             var selectedZoneText = $(this).find('option:selected').text();
             var zoneSlug = slugify(selectedZoneText);
             $('.zone_slug').val(zoneSlug);
         });
-        
+
         // Handle zone slug generation when zone is loaded from existing data
         function updateZoneSlugFromSelected() {
             var selectedZoneText = $('#zone option:selected').text();
@@ -1072,27 +1072,27 @@
                 $('.zone_slug').val(zoneSlug);
             }
         }
-        
+
         // Call this function after zone data is loaded
         setTimeout(function() {
             updateZoneSlugFromSelected();
         }, 1000);
-        
+
         // Function to update existing restaurant records with slugs
         function updateExistingRestaurantsWithSlugs() {
             database.collection('vendors').get().then(function(snapshots) {
                 var batch = database.batch();
                 var updateCount = 0;
-                
+
                 snapshots.docs.forEach(function(doc) {
                     var restaurant = doc.data();
                     var updates = {};
-                    
+
                     // Generate restaurant slug if not exists
                     if(!restaurant.restaurant_slug && restaurant.title) {
                         updates.restaurant_slug = slugify(restaurant.title);
                     }
-                    
+
                     // Generate zone slug if not exists and zoneId exists
                     if(!restaurant.zone_slug && restaurant.zoneId) {
                         // Get zone name from zoneId
@@ -1108,14 +1108,14 @@
                             }
                         });
                     }
-                    
+
                     // Add restaurant slug to batch if needed
                     if(Object.keys(updates).length > 0) {
                         batch.update(doc.ref, updates);
                         updateCount++;
                     }
                 });
-                
+
                 // Commit the batch if there are updates
                 if(updateCount > 0) {
                     batch.commit().then(function() {
@@ -1126,7 +1126,7 @@
                 }
             });
         }
-        
+
         // Uncomment the line below to run the bulk update (use with caution)
         // updateExistingRestaurantsWithSlugs();
         database.collection('settings').doc("DineinForRestaurant").get().then(async function(settingSnapshots) {
@@ -1266,7 +1266,7 @@
             ref.get().then(async function(snapshots) {
                 try {
                     var restaurant = snapshots.docs[0].data();
-                    
+
                     // Set the selected cuisine in the dropdown
                     $('#vendor_cuisine').val(restaurant.cuisineID);
 
@@ -1419,8 +1419,8 @@
                             }
                         })
                     });
-                    
-                
+
+
                     if(restaurant.hasOwnProperty('phonenumber')) {
                         $(".restaurant_phone").val(restaurant.phonenumber);
                     }
@@ -2116,7 +2116,7 @@
     function handleFileSelect(evt,type) {
         var f = evt.target.files[0];
         if (!f) return;
-        
+
         var reader = new FileReader();
         new Compressor(f, {
             quality: <?php echo env('IMAGE_COMPRESSOR_QUALITY', 0.8); ?>,
@@ -2133,7 +2133,7 @@
                         var timestamp = Number(new Date());
                         var filename = filename.split('.')[0] + "_" + timestamp + '.' + ext;
                         photo = filePayload;
-                        
+
                         if (photo != "" && photo != null) {
                             if (type == 'photo') {
                                 // Handle main restaurant photo
@@ -2164,29 +2164,29 @@
             },
         });
     }
-    
+
     function removeRestaurantPhoto() {
         // Clear the image display
         $("#uploaded_image").attr('src', '');
         $(".uploaded_image").hide();
-        
+
         // Clear the photo variables
         restaurantPhoto = '';
         resPhotoFileName = '';
-        
+
         // Clear the file input (only the restaurant photo input)
         $('#restaurant_photo_input').val('');
-        
+
         // Mark the old image for deletion
         if (resPhotoOldImageFile != '') {
             resPhotoOldImageFile = resPhotoOldImageFile; // Keep the old file reference for deletion
         }
-        
+
         console.log('Restaurant photo removed');
     }
     async function storeImageData() {
         var newPhoto = [];
-        
+
         // Handle main restaurant photo
         try {
             // Check if user removed the image
@@ -2213,7 +2213,7 @@
             } else if (restaurantPhoto != '') {
                 // Check if this is a new image (base64 data) or existing URL
                 var isNewImage = restaurantPhoto.startsWith('data:image');
-                
+
                 // Delete old photo if it exists and we're uploading a new image
                 if (resPhotoOldImageFile != "" && isNewImage) {
                     try {
