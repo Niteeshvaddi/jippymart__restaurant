@@ -32,6 +32,15 @@
                                     </div>
                                 </div>
                                 <div class="form-group row width-50">
+                                    <label class="col-3 control-label">Restaurant Slug</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control restaurant_slug" readonly>
+                                        <div class="form-text text-muted">
+                                            Auto-generated slug based on restaurant name
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row width-50">
                                     <label class="col-3 control-label">{{trans('lang.wallet_amount')}}</label>
                                     <h5 class="col-3 control-label text-primary user_wallet"><span
                                             id="wallet_balance"></span></h5>
@@ -96,6 +105,15 @@
                                         <select id='zone' class="form-control">
                                             <option value="">{{ trans("lang.select_zone") }}</option>
                                         </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row width-50">
+                                    <label class="col-3 control-label">Zone Slug</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control zone_slug" readonly>
+                                        <div class="form-text text-muted">
+                                            Auto-generated slug based on selected zone
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -541,7 +559,7 @@
                                                 </button>
                                             </div>
                                         </div>
-                                        <div class="restaurant_discount_options_"+day+"_div restaurant_discount form-group row mt-2"
+                                        <div class="restaurant_discount_options_"+day+"_div restaurant_discount form-group row mt-2">
                                             style="display:none">
                                             <div class="col-12">
                                                 <table class="booking-table" id="special_offer_table_Sunday">
@@ -1021,6 +1039,96 @@
             }
             storevideoDuration=story_data.videoDuration;
         });
+        
+        // Slug generation functionality
+        function slugify(text) {
+            return text.toString().toLowerCase()
+                .replace(/\s+/g, '-')           // Replace spaces with -
+                .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+                .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+                .replace(/^-+/, '')             // Trim - from start of text
+                .replace(/-+$/, '');            // Trim - from end of text
+        }
+        
+        // Auto-generate restaurant slug when restaurant name changes
+        $('.restaurant_name').on('input', function() {
+            var restaurantName = $(this).val();
+            var restaurantSlug = slugify(restaurantName);
+            $('.restaurant_slug').val(restaurantSlug);
+        });
+        
+        // Auto-generate zone slug when zone selection changes
+        $('#zone').on('change', function() {
+            var selectedZoneText = $(this).find('option:selected').text();
+            var zoneSlug = slugify(selectedZoneText);
+            $('.zone_slug').val(zoneSlug);
+        });
+        
+        // Handle zone slug generation when zone is loaded from existing data
+        function updateZoneSlugFromSelected() {
+            var selectedZoneText = $('#zone option:selected').text();
+            if(selectedZoneText && selectedZoneText !== "{{ trans('lang.select_zone') }}") {
+                var zoneSlug = slugify(selectedZoneText);
+                $('.zone_slug').val(zoneSlug);
+            }
+        }
+        
+        // Call this function after zone data is loaded
+        setTimeout(function() {
+            updateZoneSlugFromSelected();
+        }, 1000);
+        
+        // Function to update existing restaurant records with slugs
+        function updateExistingRestaurantsWithSlugs() {
+            database.collection('vendors').get().then(function(snapshots) {
+                var batch = database.batch();
+                var updateCount = 0;
+                
+                snapshots.docs.forEach(function(doc) {
+                    var restaurant = doc.data();
+                    var updates = {};
+                    
+                    // Generate restaurant slug if not exists
+                    if(!restaurant.restaurant_slug && restaurant.title) {
+                        updates.restaurant_slug = slugify(restaurant.title);
+                    }
+                    
+                    // Generate zone slug if not exists and zoneId exists
+                    if(!restaurant.zone_slug && restaurant.zoneId) {
+                        // Get zone name from zoneId
+                        database.collection('zone').doc(restaurant.zoneId).get().then(function(zoneDoc) {
+                            if(zoneDoc.exists) {
+                                var zoneData = zoneDoc.data();
+                                if(zoneData.name) {
+                                    var zoneSlug = slugify(zoneData.name);
+                                    database.collection('vendors').doc(doc.id).update({
+                                        'zone_slug': zoneSlug
+                                    });
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Add restaurant slug to batch if needed
+                    if(Object.keys(updates).length > 0) {
+                        batch.update(doc.ref, updates);
+                        updateCount++;
+                    }
+                });
+                
+                // Commit the batch if there are updates
+                if(updateCount > 0) {
+                    batch.commit().then(function() {
+                        console.log('Updated ' + updateCount + ' restaurants with slug fields');
+                    }).catch(function(error) {
+                        console.error('Error updating restaurants with slugs:', error);
+                    });
+                }
+            });
+        }
+        
+        // Uncomment the line below to run the bulk update (use with caution)
+        // updateExistingRestaurantsWithSlugs();
         database.collection('settings').doc("DineinForRestaurant").get().then(async function(settingSnapshots) {
             if(settingSnapshots.data()) {
                 var settingData=settingSnapshots.data();
@@ -1164,8 +1272,37 @@
 
                     if(restaurant.hasOwnProperty('zoneId')&&restaurant.zoneId!='') {
                         $("#zone").val(restaurant.zoneId);
+                        // Load zone slug if it exists, otherwise generate from zone name
+                        if(restaurant.hasOwnProperty('zone_slug') && restaurant.zone_slug) {
+                            $(".zone_slug").val(restaurant.zone_slug);
+                        } else {
+                            // Generate zone slug from selected zone text
+                            var selectedZoneText = $("#zone option:selected").text();
+                            if(selectedZoneText && selectedZoneText !== "{{ trans('lang.select_zone') }}") {
+                                var zoneSlug = selectedZoneText.toString().toLowerCase()
+                                    .replace(/\s+/g, '-')
+                                    .replace(/[^\w\-]+/g, '')
+                                    .replace(/\-\-+/g, '-')
+                                    .replace(/^-+/, '')
+                                    .replace(/-+$/, '');
+                                $(".zone_slug").val(zoneSlug);
+                            }
+                        }
                     }
                     $(".restaurant_name").val(restaurant.title);
+                    // Load existing slug values if they exist
+                    if(restaurant.hasOwnProperty('restaurant_slug') && restaurant.restaurant_slug) {
+                        $(".restaurant_slug").val(restaurant.restaurant_slug);
+                    } else {
+                        // Generate slug from existing title
+                        var restaurantSlug = restaurant.title.toString().toLowerCase()
+                            .replace(/\s+/g, '-')
+                            .replace(/[^\w\-]+/g, '')
+                            .replace(/\-\-+/g, '-')
+                            .replace(/^-+/, '')
+                            .replace(/-+$/, '');
+                        $(".restaurant_slug").val(restaurantSlug);
+                    }
                     $(".restaurant_address").val(restaurant.location);
                     $(".restaurant_latitude").val(restaurant.latitude);
                     $(".restaurant_longitude").val(restaurant.longitude);
@@ -1690,6 +1827,8 @@
                                         'isOpen': isOpen,
                                         hidephotos: false,
                                         createdAt: createdAtman,
+                                        'restaurant_slug': $('.restaurant_slug').val(),
+                                        'zone_slug': $('.zone_slug').val(),
                                     }).then(function(result) {}).catch((error) => {
                                         console.error("Error writing document: ",error);
                                         $("#field_error").html(error);
@@ -1733,6 +1872,8 @@
                                         'specialDiscountEnable': specialDiscountEnable,
                                         'workingHours': workingHours,
                                         'zoneId': zoneId,
+                                        'restaurant_slug': $('.restaurant_slug').val(),
+                                        'zone_slug': $('.zone_slug').val(),
                                         'adminCommission': commissionData,
                                         'subscriptionExpiryDate': (subscriptionData!=null)? subscriptionData.subscriptionExpiryDate:null,
                                         'subscription_plan': (subscriptionData!=null)? subscriptionData:null,
