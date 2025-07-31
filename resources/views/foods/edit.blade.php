@@ -465,32 +465,39 @@
                 }
                 if (product.hasOwnProperty('photo')) {
                     photo = product.photo;
+                    console.log('Initial photo loaded from database:', photo);
                     if (product.photos != undefined && product.photos != '' && product.photos != null) {
                         photos = product.photos;
+                        console.log('Initial photos array loaded:', photos);
                     } else {
                         if (photo != '' && photo != null) {
                             photos.push(photo);
+                            console.log('Added initial photo to photos array');
                         }
                     }
                     if (photos != '' && photos != null) {
                         photos.forEach((element, index) => {
-                            $(".product_image").append('<span class="image-item" id="photo_' +
-                                index + '"><span class="remove-btn" data-id="' + index +
+                            var isMainPhoto = (element === photo);
+                            var starButtonClass = isMainPhoto ? 'btn-success' : 'btn-outline-success';
+                            var borderStyle = isMainPhoto ? '2px solid #28a745' : '2px solid #ccc';
+                            
+                            $(".product_image").append('<span class="image-item position-relative d-inline-block" id="photo_' +
+                                index + '"><span class="remove-btn position-absolute" style="top: 3px; right: 3px; z-index: 10; background: rgba(255,255,255,0.9); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd;" data-id="' + index +
                                 '" data-img="' + photos[index] +
-                                '" data-status="old"><i class="fa fa-remove"></i></span><img onerror="this.onerror=null;this.src=\'' +
+                                '" data-status="old"><i class="fa fa-remove" style="font-size: 10px; color: #dc3545;"></i></span><button type="button" class="btn btn-sm ' + starButtonClass + ' position-absolute" style="top: 3px; right: 28px; z-index: 10; width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 10px;" onclick="setAsMainPhoto(\'' + photos[index] + '\')" title="Set as main photo"><i class="fa fa-star"></i></button><img onerror="this.onerror=null;this.src=\'' +
                                 placeholderImage +
-                                '\'" class="rounded" width="50px" id="" height="auto" src="' +
+                                '\'" class="rounded" width="80px" height="80px" style="border: ' + borderStyle + '; object-fit: cover;" src="' +
                                 photos[index] + '"></span>');
                         })
                     } else if (photo != '' && photo != null) {
                         $(".product_image").append(
-                            '<span class="image-item" id="photo_1"><img onerror="this.onerror=null;this.src=\'' +
+                            '<span class="image-item position-relative d-inline-block" id="photo_1"><img onerror="this.onerror=null;this.src=\'' +
                             placeholderImage +
-                            '\'" class="rounded" width="50px" id="" height="auto" src="' + photo +
-                            '"></span>');
+                            '\'" class="rounded" width="80px" height="80px" style="border: 2px solid #28a745; object-fit: cover;" src="' + photo +
+                            '"><button type="button" class="btn btn-sm btn-danger position-absolute" style="top: 3px; right: 3px; z-index: 10; width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 10px;" onclick="removeMainFoodPhoto()"><i class="fa fa-times"></i></button></span>');
                     } else {
                         $(".product_image").append(
-                            '<span class="image-item" id="photo_1"><img class="rounded" style="width:50px" src="' +
+                            '<span class="image-item" id="photo_1"><img class="rounded" style="width:80px; height:80px; object-fit: cover;" src="' +
                             placeholderImage + '" alt="image">');
                     }
                 }
@@ -705,10 +712,23 @@
                     }
                     jQuery("#data-table_processing").show();
                     var foodAvailable = $(".food_available").is(":checked");
-                    await storeImageData().then(async (IMG) => {
-                        if (IMG.length > 0) {
-                            photo = IMG[0];
+                    console.log('Saving food data, current photo:', photo);
+                    await storeImageData().then(async (imageData) => {
+                        console.log('Image data returned from storeImageData:', imageData);
+                        console.log('Before update - photo variable:', photo);
+                        
+                        if (imageData.photos.length > 0) {
+                            photo = imageData.mainPhoto;
+                            console.log('Setting main photo to:', photo);
+                        } else {
+                            photo = '';
+                            console.log('No photos, setting photo to empty');
                         }
+                        
+                        console.log('After update - photo variable:', photo);
+                        console.log('Updating food in database with photo:', photo);
+                        console.log('Photos array being saved:', imageData.photos);
+                        
                         database.collection('vendor_products').doc(id).update({
                             'name': name,
                             'price': price.toString(),
@@ -730,9 +750,10 @@
                             'takeawayOption': foodTakeaway,
                             'product_specification': product_specification,
                             'item_attribute': item_attribute,
-                            'photos': IMG,
+                            'photos': imageData.photos,
                             'isAvailable': foodAvailable
                         }).then(function(result) {
+                            console.log('Food updated successfully in database');
                             <?php if(isset($_GET['eid']) && $_GET['eid'] != ''){?>
                             window.location.href =
                                 "{{ route('restaurants.foods', $_GET['eid']) }}";
@@ -742,6 +763,7 @@
                             <?php } ?>
                         });
                     }).catch(err => {
+                        console.error('Error in storeImageData:', err);
                         jQuery("#data-table_processing").hide();
                         $(".error_top").show();
                         $(".error_top").html("");
@@ -842,11 +864,11 @@
                     var filename = filename.split('.')[0] + "_" + timestamp + '.' + ext;
                     product_image_filename.push(filename);
                     productImagesCount++;
-                    photos_html = '<span class="image-item" id="photo_' + productImagesCount +
-                        '"><span class="remove-btn" data-id="' + productImagesCount + '" data-img="' +
+                    photos_html = '<span class="image-item position-relative d-inline-block" id="photo_' + productImagesCount +
+                        '"><span class="remove-btn position-absolute" style="top: 3px; right: 3px; z-index: 10; background: rgba(255,255,255,0.9); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd;" data-id="' + productImagesCount + '" data-img="' +
                         filePayload +
-                        '"><i class="fa fa-remove"></i></span><img onerror="this.onerror=null;this.src=\'' +
-                        placeholderImage + '\'" class="rounded" width="50px" id="" height="auto" src="' +
+                        '"><i class="fa fa-remove" style="font-size: 10px; color: #dc3545;"></i></span><img onerror="this.onerror=null;this.src=\'' +
+                        placeholderImage + '\'" class="rounded" width="80px" height="80px" style="object-fit: cover;" src="' +
                         filePayload + '"></span>'
                     $(".product_image").append(photos_html);
                     photos.push(filePayload);
@@ -855,41 +877,190 @@
             })(f);
             reader.readAsDataURL(f);
         }
-        async function storeImageData() {
-            var newPhoto = [];
-            if (photos.length > 0) {
-                newPhoto = photos;
+        function removeMainFoodPhoto() {
+            // Clear the image display
+            $(".product_image").empty();
+            $(".product_image").append(
+                '<span class="image-item" id="photo_1"><img class="rounded" style="width:200px; height:200px; object-fit: cover;" src="' +
+                placeholderImage + '" alt="image">');
+            
+            // Clear the photo variables
+            photo = '';
+            photos = [];
+            
+            // Clear the file input
+            $('#product_image').val('');
+            
+            console.log('Main food photo removed');
+        }
+        
+        function setAsMainPhoto(imageUrl) {
+            console.log('Setting as main photo:', imageUrl);
+            photo = imageUrl;
+            console.log('Photo variable updated to:', photo);
+            
+            // Update the UI to show this is the main photo
+            $('.product_image .btn-success').removeClass('btn-success').addClass('btn-outline-success');
+            $(`button[onclick="setAsMainPhoto('${imageUrl}')"]`).removeClass('btn-outline-success').addClass('btn-success');
+            
+            // Show a visual indicator
+            $('.product_image img').css('border', '2px solid #ccc');
+            $(`img[src="${imageUrl}"]`).css('border', '2px solid #28a745');
+            
+            // If this is a new image (base64), also update the new_added_photos array
+            if (imageUrl.startsWith('data:image')) {
+                console.log('This is a new image (base64), updating new_added_photos priority');
+                // Move this image to the front of new_added_photos so it becomes the main photo
+                var index = new_added_photos.indexOf(imageUrl);
+                if (index > -1) {
+                    new_added_photos.splice(index, 1);
+                    new_added_photos.unshift(imageUrl);
+                    
+                    // Also move the filename
+                    var filename = new_added_photos_filename[index];
+                    new_added_photos_filename.splice(index, 1);
+                    new_added_photos_filename.unshift(filename);
+                    console.log('Moved image to front of new_added_photos array');
+                } else {
+                    console.log('Warning: Image not found in new_added_photos array');
+                }
+            } else {
+                console.log('This is an existing image (URL), will be handled in storeImageData');
+                // Verify this URL exists in the photos array
+                if (!photos.includes(imageUrl)) {
+                    console.log('Warning: Selected main photo URL not found in photos array');
+                }
             }
+            
+            // Log current state for debugging
+            console.log('Current state - photo:', photo, 'photos count:', photos.length, 'new_added_photos count:', new_added_photos.length);
+        }
+        
+        async function storeImageData() {
+            console.log('storeImageData called, current photo variable:', photo);
+            var newPhoto = [];
+            var mainPhoto = photo; // Start with current photo as default
+            
+            // Handle existing photos (excluding those marked for deletion)
+            if (photos.length > 0) {
+                // Filter out photos that are marked for deletion
+                var photosToDeleteUrls = [];
+                photosToDelete.forEach(function(delRef) {
+                    try {
+                        // Extract URL from the storage reference
+                        var url = delRef.toString();
+                        if (url.includes('firebasestorage.googleapis.com')) {
+                            // Convert storage reference to URL format
+                            var path = delRef.fullPath;
+                            var bucket = delRef.bucket;
+                            var url = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media`;
+                            photosToDeleteUrls.push(url);
+                        }
+                    } catch (e) {
+                        console.log('Error processing deletion URL:', e);
+                    }
+                });
+                
+                newPhoto = photos.filter(function(photoUrl) {
+                    return !photosToDeleteUrls.includes(photoUrl);
+                });
+                console.log('Existing photos loaded (filtered):', newPhoto);
+                
+                // If mainPhoto is an existing URL that's being deleted, clear it
+                if (mainPhoto && !mainPhoto.startsWith('data:image') && photosToDeleteUrls.includes(mainPhoto)) {
+                    console.log('Main photo is being deleted, will need to set new main photo');
+                    mainPhoto = '';
+                }
+            }
+            
+            // Handle new photos (base64 data) - upload in order to maintain priority
             if (new_added_photos.length > 0) {
-                await Promise.all(new_added_photos.map(async (foodPhoto, index) => {
-                    foodPhoto = foodPhoto.replace(/^data:image\/[a-z]+;base64,/, "");
-                    var uploadTask = await storageRef.child(new_added_photos_filename[index]).putString(
-                        foodPhoto, 'base64', {
+                console.log('Uploading new food photos:', new_added_photos.length);
+                
+                // Upload photos sequentially to maintain order and priority
+                for (let index = 0; index < new_added_photos.length; index++) {
+                    const foodPhoto = new_added_photos[index];
+                    const filename = new_added_photos_filename[index];
+                    
+                    var originalBase64 = foodPhoto.replace(/^data:image\/[a-z]+;base64,/, "");
+                    var uploadTask = await storageRef.child(filename).putString(
+                        originalBase64, 'base64', {
                             contentType: 'image/jpg'
                         });
                     var downloadURL = await uploadTask.ref.getDownloadURL();
+                    console.log('New food photo uploaded:', downloadURL);
                     newPhoto.push(downloadURL);
-                }));
+                    
+                    // If this is a base64 image that was set as main photo, update mainPhoto to the uploaded URL
+                    if (mainPhoto === foodPhoto) {
+                        mainPhoto = downloadURL;
+                        console.log('Updated main photo to uploaded URL:', mainPhoto);
+                    }
+                }
             }
+            
+            // Handle photos to delete
             if (photosToDelete.length > 0) {
+                console.log('Deleting old food photos:', photosToDelete.length);
                 await Promise.all(photosToDelete.map(async (delImage) => {
-                    imageBucket = delImage.bucket;
-                    var envBucket = "<?php echo env('FIREBASE_STORAGE_BUCKET'); ?>";
-                    if (imageBucket == envBucket) {
-                        await delImage.delete().then(() => {
-                            console.log("Old file deleted!")
-                        }).catch((error) => {
-                            console.log("ERR File delete ===", error);
-                        });
-                    } else {
-                        console.log('Bucket not matched');
+                    try {
+                        imageBucket = delImage.bucket;
+                        var envBucket = "<?php echo env('FIREBASE_STORAGE_BUCKET'); ?>";
+                        if (imageBucket == envBucket) {
+                            await delImage.delete().then(() => {
+                                console.log("Old food photo deleted!")
+                            }).catch((error) => {
+                                console.log("ERR Food photo delete ===", error);
+                            });
+                        } else {
+                            console.log('Bucket not matched for food photo deletion');
+                        }
+                    } catch (error) {
+                        console.log("Error deleting food photo:", error);
                     }
                 }));
             }
-            return newPhoto;
+            
+            // If no main photo is set and we have photos, use the first one
+            if (mainPhoto === '' && newPhoto.length > 0) {
+                mainPhoto = newPhoto[0];
+                console.log('No main photo set, using first photo:', mainPhoto);
+            }
+            
+            // Final safety check: ensure main photo exists in the photos array
+            if (mainPhoto && !newPhoto.includes(mainPhoto)) {
+                console.log('Main photo not found in photos array, using first available photo');
+                if (newPhoto.length > 0) {
+                    mainPhoto = newPhoto[0];
+                } else {
+                    mainPhoto = '';
+                }
+            }
+            
+            // IMPORTANT: Check if user has selected a different photo as main using the star button
+            // Look for the image with the green star button (btn-success class)
+            var selectedMainPhotoElement = $('.product_image .btn-success').closest('.image-item').find('img');
+            if (selectedMainPhotoElement.length > 0) {
+                var selectedMainPhotoSrc = selectedMainPhotoElement.attr('src');
+                console.log('User selected main photo from UI:', selectedMainPhotoSrc);
+                
+                // If the selected photo exists in our newPhoto array, use it as main photo
+                if (selectedMainPhotoSrc && newPhoto.includes(selectedMainPhotoSrc)) {
+                    mainPhoto = selectedMainPhotoSrc;
+                    console.log('User selected main photo preserved:', mainPhoto);
+                } else if (selectedMainPhotoSrc && selectedMainPhotoSrc.startsWith('data:image')) {
+                    // This is a new photo (base64) that was selected as main
+                    // It should have been uploaded above and the mainPhoto should already be set correctly
+                    console.log('Selected main photo is a new image (base64), should be handled by upload logic');
+                }
+            }
+            
+            console.log('Food image data processed, returning:', newPhoto.length, 'photos, main photo:', mainPhoto);
+            return { photos: newPhoto, mainPhoto: mainPhoto };
         }
         $("#product_image").resizeImg({
             callback: function(base64str) {
+                console.log('New food image selected via resizeImg');
                 var val = $('#product_image').val().toLowerCase();
                 var ext = val.split('.')[1];
                 var docName = val.split('fakepath')[1];
@@ -897,32 +1068,66 @@
                 var timestamp = Number(new Date());
                 var filename = filename.split('.')[0] + "_" + timestamp + '.' + ext;
                 productImagesCount++;
-                photos_html = '<span class="image-item" id="photo_' + productImagesCount +
-                    '"><span class="remove-btn" data-id="' + productImagesCount + '" data-img="' + base64str +
-                    '" data-status="new"><i class="fa fa-remove"></i></span><img class="rounded" width="50px" id="" height="auto" src="' +
+                photos_html = '<span class="image-item position-relative d-inline-block" id="photo_' + productImagesCount +
+                    '"><span class="remove-btn position-absolute" style="top: 3px; right: 3px; z-index: 10; background: rgba(255,255,255,0.9); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd;" data-id="' + productImagesCount + '" data-img="' + base64str +
+                    '" data-status="new"><i class="fa fa-remove" style="font-size: 10px; color: #dc3545;"></i></span><button type="button" class="btn btn-sm btn-outline-success position-absolute" style="top: 3px; right: 28px; z-index: 10; width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 10px;" onclick="setAsMainPhoto(\'' + base64str + '\')" title="Set as main photo"><i class="fa fa-star"></i></button><img class="rounded" width="80px" height="80px" style="object-fit: cover;" src="' +
                     base64str + '"></span>'
                 $(".product_image").append(photos_html);
                 new_added_photos.push(base64str);
                 new_added_photos_filename.push(filename);
                 $("#product_image").val('');
+                console.log('Food image added to new_added_photos array');
+                
+                // If this is the first photo (no existing main photo), automatically set it as main
+                if (photo === '' && photos.length === 0 && new_added_photos.length === 1) {
+                    setAsMainPhoto(base64str);
+                    console.log('First photo automatically set as main photo');
+                }
             }
         });
         $(document).on("click", ".remove-btn", function() {
             var id = $(this).attr('data-id');
             var photo_remove = $(this).attr('data-img');
             var status = $(this).attr('data-status');
+            console.log('Removing food image:', {id: id, status: status, photo: photo_remove});
+            
+            // Check if this is the main photo being removed
+            if (photo === photo_remove) {
+                console.log('Removing main photo, need to set a new main photo');
+                // If this is the main photo, set the first remaining photo as main
+                var remainingPhotos = photos.filter(p => p !== photo_remove);
+                var remainingNewPhotos = new_added_photos.filter(p => p !== photo_remove);
+                
+                if (remainingPhotos.length > 0) {
+                    photo = remainingPhotos[0];
+                    console.log('Set new main photo from existing photos:', photo);
+                } else if (remainingNewPhotos.length > 0) {
+                    photo = remainingNewPhotos[0];
+                    console.log('Set new main photo from new photos:', photo);
+                } else {
+                    photo = '';
+                    console.log('No photos remaining, cleared main photo');
+                }
+            }
+            
             if (status == "old") {
                 photosToDelete.push(firebase.storage().refFromURL(photo_remove));
+                console.log('Added old photo to deletion queue');
             }
+            
             $("#photo_" + id).remove();
+            
             index = photos.indexOf(photo_remove);
             if (index > -1) {
                 photos.splice(index, 1); // 2nd parameter means remove one item only
+                console.log('Removed from photos array');
             }
+            
             index = new_added_photos.indexOf(photo_remove);
             if (index > -1) {
                 new_added_photos.splice(index, 1); // 2nd parameter means remove one item only
                 new_added_photos_filename.splice(index, 1);
+                console.log('Removed from new_added_photos array');
             }
         });
         $("#food_restaurant").change(function() {

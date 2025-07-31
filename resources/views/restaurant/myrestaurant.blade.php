@@ -130,11 +130,15 @@
                                 <div class="form-group row">
                                                 <label class="col-3 control-label">{{trans('lang.restaurant_image')}}</label>
                                                 <div class="col-7">
-                                                    <input type="file" onChange="handleFileSelect(event,'photo')">
+                                                    <input type="file" id="restaurant_photo_input" onChange="handleFileSelect(event,'photo')">
                                                     <div id="uploding_image"></div>
-                                                    <div class="uploaded_image" style="display:none;"><img id="uploaded_image"
-                                                                                                        src="" width="150px"
-                                                                                                        height="150px;">
+                                                    <div class="uploaded_image" style="display:none;">
+                                                        <div class="position-relative d-inline-block">
+                                                            <img id="uploaded_image" src="" width="150px" height="150px;">
+                                                            <button type="button" class="btn btn-sm btn-danger position-absolute" style="top: 5px; right: 5px;" onclick="removeRestaurantPhoto()">
+                                                                <i class="fa fa-times"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div class="form-text text-muted">
                                                         {{ trans("lang.restaurant_image_help") }}
@@ -1671,9 +1675,10 @@
                 var openDineTime = $("#openDineTime").val();
                 var closeDineTime = $("#closeDineTime").val();
                 await storeStoryData().then(async (resStoryVid) => {
-                    await storeImageData().then(async (IMG) => {
-                        await storeGalleryImageData().then(async (GalleryIMG) => {
-                            await storeMenuImageData().then(async (MenuIMG) => {
+                                            await storeImageData().then(async (IMG) => {
+                            console.log('Image data to save:', IMG);
+                            await storeGalleryImageData().then(async (GalleryIMG) => {
+                                await storeMenuImageData().then(async (MenuIMG) => {
                                 var restaurant_id='';
                                 if(vendorId!='') {
                                     restaurant_id=vendorId;
@@ -1701,6 +1706,7 @@
                                         'minimum_delivery_charges': minimum_delivery_charges,
                                         'minimum_delivery_charges_within_km': minimum_delivery_charges_within_km
                                     };
+                                    console.log('Saving restaurant photo to database:', IMG.restaurantImage);
                                     geoFirestore.collection('vendors').doc(restaurant_id).update({
                                         'title': restaurantname,
                                         'description': description,
@@ -1968,6 +1974,8 @@
     }
     function handleFileSelect(evt,type) {
         var f = evt.target.files[0];
+        if (!f) return;
+        
         var reader = new FileReader();
         new Compressor(f, {
             quality: <?php echo env('IMAGE_COMPRESSOR_QUALITY', 0.8); ?>,
@@ -1988,10 +1996,13 @@
                         if (photo != "" && photo != null) {
                             if (type == 'photo') {
                                 // Handle main restaurant photo
+                                console.log('New restaurant photo selected:', filename);
                                 restaurantPhoto = photo;
                                 resPhotoFileName = filename;
                                 $("#uploaded_image").attr('src', photo);
                                 $(".uploaded_image").show();
+                                // Clear the file input to allow re-uploading the same file
+                                $('#restaurant_photo_input').val('');
                             } else if (type == 'photos') {
                                 // Handle gallery photos
                                 photocount++;
@@ -1999,6 +2010,8 @@
                                 $("#photos").append(photos_html);
                                 new_added_restaurant_photos.push(photo);
                                 new_added_restaurant_photos_filename.push(filename);
+                                // Clear the file input to allow re-uploading the same file
+                                evt.target.value = '';
                             }
                         }
                     };
@@ -2010,14 +2023,58 @@
             },
         });
     }
+    
+    function removeRestaurantPhoto() {
+        // Clear the image display
+        $("#uploaded_image").attr('src', '');
+        $(".uploaded_image").hide();
+        
+        // Clear the photo variables
+        restaurantPhoto = '';
+        resPhotoFileName = '';
+        
+        // Clear the file input (only the restaurant photo input)
+        $('#restaurant_photo_input').val('');
+        
+        // Mark the old image for deletion
+        if (resPhotoOldImageFile != '') {
+            resPhotoOldImageFile = resPhotoOldImageFile; // Keep the old file reference for deletion
+        }
+        
+        console.log('Restaurant photo removed');
+    }
     async function storeImageData() {
         var newPhoto = [];
         
         // Handle main restaurant photo
         try {
-            if (restaurantPhoto != '') {
+            // Check if user removed the image
+            if (restaurantPhoto === '') {
                 // Delete old photo if it exists
-                if (resPhotoOldImageFile != "" && restaurantPhoto != resPhotoOldImageFile) {
+                if (resPhotoOldImageFile != "") {
+                    try {
+                        var oldImageUrlRef = await storage.refFromURL(resPhotoOldImageFile);
+                        imageBucket = oldImageUrlRef.bucket;
+                        var envBucket = "<?php echo env('FIREBASE_STORAGE_BUCKET'); ?>";
+                        if (imageBucket == envBucket) {
+                            await oldImageUrlRef.delete().then(() => {
+                                console.log("Old restaurant photo deleted!")
+                            }).catch((error) => {
+                                console.log("ERR File delete ===", error);
+                            });
+                        }
+                    } catch (error) {
+                        console.log("Error deleting old photo:", error);
+                    }
+                }
+                // Set photo to null to remove it from database
+                newPhoto['restaurantImage'] = null;
+            } else if (restaurantPhoto != '') {
+                // Check if this is a new image (base64 data) or existing URL
+                var isNewImage = restaurantPhoto.startsWith('data:image');
+                
+                // Delete old photo if it exists and we're uploading a new image
+                if (resPhotoOldImageFile != "" && isNewImage) {
                     try {
                         var oldImageUrlRef = await storage.refFromURL(resPhotoOldImageFile);
                         imageBucket = oldImageUrlRef.bucket;
@@ -2034,12 +2091,18 @@
                     }
                 }
 
-                // Upload new photo
-                if (restaurantPhoto != '' && restaurantPhoto != null && resPhotoFileName != '') {
+                // Upload new photo if it's base64 data
+                if (isNewImage && restaurantPhoto != '' && restaurantPhoto != null && resPhotoFileName != '') {
+                    console.log('Uploading new restaurant photo:', resPhotoFileName);
                     restaurantPhoto = restaurantPhoto.replace(/^data:image\/[a-z]+;base64,/, "")
                     var uploadTask = await storageRef.child(resPhotoFileName).putString(restaurantPhoto, 'base64', {contentType: 'image/jpg'});
                     var downloadURL = await uploadTask.ref.getDownloadURL();
+                    console.log('New restaurant photo uploaded:', downloadURL);
                     newPhoto['restaurantImage'] = downloadURL;
+                } else if (!isNewImage && restaurantPhoto != '') {
+                    // If it's an existing URL, use it as is
+                    console.log('Using existing restaurant photo URL:', restaurantPhoto);
+                    newPhoto['restaurantImage'] = restaurantPhoto;
                 }
             }
 
