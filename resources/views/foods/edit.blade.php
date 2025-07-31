@@ -1055,6 +1055,17 @@
                 }
             }
             
+            // OPTIONAL: Reorder photos array so main photo is always first
+            if (mainPhoto && newPhoto.length > 1) {
+                var mainPhotoIndex = newPhoto.indexOf(mainPhoto);
+                if (mainPhotoIndex > 0) {
+                    // Move main photo to first position
+                    newPhoto.splice(mainPhotoIndex, 1);
+                    newPhoto.unshift(mainPhoto);
+                    console.log('Reordered photos array - main photo moved to first position');
+                }
+            }
+            
             console.log('Food image data processed, returning:', newPhoto.length, 'photos, main photo:', mainPhoto);
             return { photos: newPhoto, mainPhoto: mainPhoto };
         }
