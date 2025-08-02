@@ -284,7 +284,32 @@
             } else if (val.status == 'Order Completed') {
                 html.push('<td class="order_completed"><span>' + val.status + '</span></td>');
             }
-            html.push('<td class="text-green">' + val.price + '</td>');
+            
+            // Calculate subtotal directly here - Product Base Price × Quantity only
+            var subtotal = 0;
+            if (val.products) {
+                val.products.forEach((product) => {
+                    var final_price = '';
+                    if(product.discountPrice != 0 && product.discountPrice != "" && product.discountPrice != null && !isNaN(product.discountPrice)){
+                        final_price = parseFloat(product.discountPrice);    
+                    } else {
+                        final_price = parseFloat(product.price);
+                    }
+                    var price_item = parseFloat(final_price).toFixed(2);
+                    var totalProductPrice = parseFloat(price_item) * parseInt(product.quantity);
+                    subtotal += parseFloat(totalProductPrice);
+                });
+            }
+            
+            // Format subtotal with currency
+            var subtotal_display = '';
+            if (currencyAtRight) {
+                subtotal_display = parseFloat(subtotal).toFixed(decimal_degits) + "" + currentCurrency;
+            } else {
+                subtotal_display = currentCurrency + "" + parseFloat(subtotal).toFixed(decimal_degits);
+            }
+            
+            html.push('<td class="text-green">' + subtotal_display + '</td>');
             html.push(val.takeAway);
             var createdAt_val = '';
             if (val.createdAt) {
@@ -322,106 +347,32 @@
             });
         });
         function buildHTMLProductstotal(snapshotsProducts) {
-            var adminCommission = snapshotsProducts.adminCommission;
-            var adminCommissionType = snapshotsProducts.adminCommissionType;
-            var discount = snapshotsProducts.discount;
-            var couponCode = snapshotsProducts.couponCode;
-            var extras = snapshotsProducts.extras;
-            var extras_price = snapshotsProducts.extras_price;
-            var rejectedByDrivers = snapshotsProducts.rejectedByDrivers;
-            var takeAway = snapshotsProducts.takeAway;
-            var tip_amount = snapshotsProducts.tip_amount;
-            var status = snapshotsProducts.status;
             var products = snapshotsProducts.products;
-            var deliveryCharge = snapshotsProducts.deliveryCharge;
-            var totalProductPrice = 0;
             var total_price = 0;
-            var specialDiscount = snapshotsProducts.specialDiscount;
-            var intRegex = /^\d+$/;
-            var floatRegex = /^((\d+(\.\d *)?)|((\d*\.)?\d+))$/;
+            
             if (products) {
                 products.forEach((product) => {
                     var val = product;
-                    var final_price='';
-                    if(val.discountPrice!=0 && val.discountPrice!="" && val.discountPrice!=null && !isNaN(val.discountPrice)){
+                    // Only calculate: Product Base Price × Quantity (Subtotal)
+                    var final_price = '';
+                    if(val.discountPrice != 0 && val.discountPrice != "" && val.discountPrice != null && !isNaN(val.discountPrice)){
                         final_price = parseFloat(val.discountPrice);    
-                    }
-                    else
-                    {
+                    } else {
                         final_price = parseFloat(val.price);
                     }
-                    price_item = parseFloat(final_price).toFixed(2);
-                    extras_price_item = (parseFloat(val.extras_price) * parseInt(val.quantity)).toFixed(2);
-                    totalProductPrice = parseFloat(price_item) * parseInt(val.quantity);
-                    var extras_price = 0;
-                    if (parseFloat(extras_price_item) != NaN && val.extras_price != undefined) {
-                        extras_price = extras_price_item;
-                    }
-                    totalProductPrice = parseFloat(extras_price) + parseFloat(totalProductPrice);
-                    totalProductPrice = parseFloat(totalProductPrice).toFixed(2);
+                    var price_item = parseFloat(final_price).toFixed(2);
+                    var totalProductPrice = parseFloat(price_item) * parseInt(val.quantity);
                     total_price += parseFloat(totalProductPrice);
                 });
             }
-            if (intRegex.test(discount) || floatRegex.test(discount)) {
-                discount = parseFloat(discount).toFixed(decimal_degits);
-                total_price -= parseFloat(discount);
-                if (currencyAtRight) {
-                    discount_val = discount + "" + currentCurrency;
-                } else {
-                    discount_val = currentCurrency + "" + discount;
-                }
-            }
-            var special_discount = 0;
-            if (specialDiscount != undefined) {
-                special_discount = parseFloat(specialDiscount.special_discount).toFixed(2);
-                total_price = total_price - special_discount;
-            }
-            var total_item_price = total_price;
-            var tax = 0;
-            taxlabel = '';
-            taxlabeltype = '';
-            if (snapshotsProducts.hasOwnProperty('taxSetting')) {
-                var total_tax_amount = 0;
-                for (var i = 0; i < snapshotsProducts.taxSetting.length; i++) {
-                    var data = snapshotsProducts.taxSetting[i];
-                    if (data.type && data.tax) {
-                        if (data.type == "percentage") {
-                            tax = (data.tax * total_price) / 100;
-                            taxlabeltype = "%";
-                        } else {
-                            tax = data.tax;
-                            taxlabeltype = "fix";
-                        }
-                        taxlabel = data.title;
-                    }
-                    total_tax_amount += parseFloat(tax);
-                }
-                total_price = parseFloat(total_price) + parseFloat(total_tax_amount);
-            }
-            if ((intRegex.test(deliveryCharge) || floatRegex.test(deliveryCharge)) && !isNaN(deliveryCharge)) {
-                deliveryCharge = parseFloat(deliveryCharge).toFixed(decimal_degits);
-                total_price += parseFloat(deliveryCharge);
-                if (currencyAtRight) {
-                    deliveryCharge_val = deliveryCharge + "" + currentCurrency;
-                } else {
-                    deliveryCharge_val = currentCurrency + "" + deliveryCharge;
-                }
-            }
-            if (intRegex.test(tip_amount) || floatRegex.test(tip_amount) && !isNaN(tip_amount)) {
-                tip_amount = parseFloat(tip_amount).toFixed(decimal_degits);
-                total_price += parseFloat(tip_amount);
-                total_price = parseFloat(total_price).toFixed(decimal_degits);
-                if (currencyAtRight) {
-                    tip_amount_val = tip_amount + "" + currentCurrency;
-                } else {
-                    tip_amount_val = currentCurrency + "" + tip_amount;
-                }
-            }
+            
+            // Format with currency - return only subtotal
             if (currencyAtRight) {
                 var total_price_val = parseFloat(total_price).toFixed(decimal_degits) + "" + currentCurrency;
             } else {
                 var total_price_val = currentCurrency + "" + parseFloat(total_price).toFixed(decimal_degits);
             }
+            
             return total_price_val;
         }
     </script>

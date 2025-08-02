@@ -158,7 +158,7 @@
                                     <th>{{trans('lang.order_id')}}</th>
                                     <th>{{trans('lang.order_user_id')}}</th>
                                     <th>{{trans('lang.order_type')}}</th>
-                                    <th>{{trans('lang.total_amount')}}</th>
+                                    <th>Subtotal</th>
                                     <th>{{trans('lang.quantity')}}</th>
                                     <th>{{trans('lang.order_date')}}</th>
                                     <th>{{trans('lang.order_order_status_id')}}</th>
@@ -306,7 +306,7 @@ links.forEach(link => {
                 var append_listrecent_order = document.getElementById('append_list_recent_order');
                 append_listrecent_order.innerHTML = '';
                 ref = db.collection('restaurant_orders');
-                ref.orderBy('createdAt', 'desc').where('status', 'in', ["Order Placed", "Order Accepted", "Driver Pending", "Driver Accepted", "Order Shipped", "In Transit"]).where('vendorID', "==", vendorId).limit(inx).get().then(async (snapshots) => {
+                ref.where('vendorID', "==", vendorId).orderBy('createdAt', 'desc').limit(inx).get().then(async (snapshots) => {
                     var html = '';
                     html = await buildOrderHTML(snapshots);
                     if (html != '') {
@@ -520,13 +520,31 @@ links.forEach(link => {
             } else {
                 html = html + '<td data-url="' + route + '" class="redirecttopage">Order Delivery</td>';
             }
-            var price = 0;
-            if (val.deliveryCharge != undefined) {
-                price = parseInt(val.deliveryCharge) + price;
+            
+            // Calculate subtotal directly here - Product Base Price × Quantity only
+            var subtotal = 0;
+            if (val.products) {
+                val.products.forEach((product) => {
+                    var final_price = '';
+                    if(product.discountPrice != 0 && product.discountPrice != "" && product.discountPrice != null && !isNaN(product.discountPrice)){
+                        final_price = parseFloat(product.discountPrice);    
+                    } else {
+                        final_price = parseFloat(product.price);
+                    }
+                    var price_item = parseFloat(final_price).toFixed(decimal_degits);
+                    var totalProductPrice = parseFloat(price_item) * parseInt(product.quantity);
+                    subtotal += parseFloat(totalProductPrice);
+                });
             }
-            if (val.tip_amount != undefined) {
-                price = parseInt(val.tip_amount) + price;
+            
+            // Format subtotal with currency
+            var subtotal_display = '';
+            if (currencyAtRight) {
+                subtotal_display = parseFloat(subtotal).toFixed(decimal_degits) + "" + currentCurrency;
+            } else {
+                subtotal_display = currentCurrency + "" + parseFloat(subtotal).toFixed(decimal_degits);
             }
+            
             var date = '';
             var time = '';
             if (val.hasOwnProperty('createdAt')) {
@@ -536,8 +554,7 @@ links.forEach(link => {
                 } catch (e) {
                 }
             }
-            var price = await buildHTMLProductstotal(val);
-            html = html + '<td data-url="' + route + '" class="redirecttopage">' + price + '</td>';
+            html = html + '<td data-url="' + route + '" class="redirecttopage">' + subtotal_display + '</td>';
             html = html + '<td data-url="' + route + '" class="redirecttopage"><i class="fa fa-shopping-cart"></i> ' + val.products.length + '</td>';
             html = html + '<td data-url="' + route + '" class="redirecttopage">' + date + ' ' + time + '</td>';
             if (val.status == 'Order Placed') {
@@ -625,82 +642,26 @@ links.forEach(link => {
             });
         });
         function buildHTMLProductstotal(snapshotsProducts) {
-            var adminCommission = snapshotsProducts.adminCommission;
-            var discount = snapshotsProducts.discount;
-            var couponCode = snapshotsProducts.couponCode;
-            var extras = snapshotsProducts.extras;
-            var extras_price = snapshotsProducts.extras_price;
-            var rejectedByDrivers = snapshotsProducts.rejectedByDrivers;
-            var takeAway = snapshotsProducts.takeAway;
-            var tip_amount = snapshotsProducts.tip_amount;
-            var status = snapshotsProducts.status;
             var products = snapshotsProducts.products;
-            var deliveryCharge = snapshotsProducts.deliveryCharge;
-            var totalProductPrice = 0;
             var total_price = 0;
-            var intRegex = /^\d+$/;
-            var floatRegex = /^((\d+(\.\d *)?)|((\d*\.)?\d+))$/;
+            
             if (products) {
                 products.forEach((product) => {
                     var val = product;
-                    price_item = parseFloat(val.price).toFixed(decimal_degits);
-                    extras_price_item = (parseFloat(val.extras_price) * parseInt(val.quantity)).toFixed(decimal_degits);
-                    totalProductPrice = parseFloat(price_item) * parseInt(val.quantity);
-                    var extras_price = 0;
-                    if (parseFloat(extras_price_item) != NaN && val.extras_price != undefined) {
-                        extras_price = extras_price_item;
-                    }
-                    totalProductPrice = parseFloat(extras_price) + parseFloat(totalProductPrice);
-                    totalProductPrice = parseFloat(totalProductPrice).toFixed(decimal_degits);
+                    // Only calculate: Product Base Price × Quantity (Subtotal)
+                    var price_item = parseFloat(val.price).toFixed(decimal_degits);
+                    var totalProductPrice = parseFloat(price_item) * parseInt(val.quantity);
                     total_price += parseFloat(totalProductPrice);
                 });
             }
-            if (intRegex.test(discount) || floatRegex.test(discount)) {
-                discount = parseFloat(discount).toFixed(decimal_degits);
-                total_price -= parseFloat(discount);
-                if (currencyAtRight) {
-                    discount_val = discount + "" + currentCurrency;
-                } else {
-                    discount_val = currentCurrency + "" + discount;
-                }
-            }
-            tax = 0;
-            if (snapshotsProducts.hasOwnProperty('taxSetting')) {
-                if (snapshotsProducts.taxSetting.type && snapshotsProducts.taxSetting.tax) {
-                    if (snapshotsProducts.taxSetting.type == "percent") {
-                        tax = (snapshotsProducts.taxSetting.tax * total_price) / 100;
-                    } else {
-                        tax = snapshotsProducts.taxSetting.tax;
-                    }
-                }
-            }
-            if (!isNaN(tax)) {
-                total_price = parseFloat(total_price) + parseFloat(tax);
-            }
-            if (intRegex.test(deliveryCharge) || floatRegex.test(deliveryCharge)) {
-                deliveryCharge = parseFloat(deliveryCharge).toFixed(decimal_degits);
-                total_price += parseFloat(deliveryCharge);
-                if (currencyAtRight) {
-                    deliveryCharge_val = deliveryCharge + "" + currentCurrency;
-                } else {
-                    deliveryCharge_val = currentCurrency + "" + deliveryCharge;
-                }
-            }
-            if (intRegex.test(tip_amount) || floatRegex.test(tip_amount)) {
-                tip_amount = parseFloat(tip_amount).toFixed(decimal_degits);
-                total_price += parseFloat(tip_amount);
-                total_price = parseFloat(total_price).toFixed(decimal_degits);
-                if (currencyAtRight) {
-                    tip_amount_val = tip_amount + "" + currentCurrency;
-                } else {
-                    tip_amount_val = currentCurrency + "" + tip_amount;
-                }
-            }
+            
+            // Format with currency - return only subtotal
             if (currencyAtRight) {
-                var total_price_val = total_price + "" + currentCurrency;
+                var total_price_val = parseFloat(total_price).toFixed(decimal_degits) + "" + currentCurrency;
             } else {
-                var total_price_val = currentCurrency + "" + total_price;
+                var total_price_val = currentCurrency + "" + parseFloat(total_price).toFixed(decimal_degits);
             }
+            
             return total_price_val;
         }
         function setVisitors() {

@@ -239,9 +239,32 @@ $(document).ready(function() {
         'for="is_open_' + id + '" ></label></td>');
         html.push('<td><div data-url="'+route1+'" class="redirecttopage" style="cursor: pointer;">'+val.id+'</div></td>');
         html.push('<td>'+val.client + '</td>');
-        var price = 0;
-        var price = buildHTMLProductstotal(val);    
-        html.push('<td class="text-green">'+val.price+'</td>');
+        
+        // Calculate subtotal directly here - Product Base Price × Quantity only
+        var subtotal = 0;
+        if (val.products) {
+            val.products.forEach((product) => {
+                var final_price = '';
+                if(product.discountPrice != 0 && product.discountPrice != "" && product.discountPrice != null && !isNaN(product.discountPrice)){
+                    final_price = parseFloat(product.discountPrice);    
+                } else {
+                    final_price = parseFloat(product.price);
+                }
+                var price_item = parseFloat(final_price).toFixed(2);
+                var totalProductPrice = parseFloat(price_item) * parseInt(product.quantity);
+                subtotal += parseFloat(totalProductPrice);
+            });
+        }
+        
+        // Format subtotal with currency
+        var subtotal_display = '';
+        if (currencyAtRight) {
+            subtotal_display = parseFloat(subtotal).toFixed(decimal_degits) + "" + currentCurrency;
+        } else {
+            subtotal_display = currentCurrency + "" + parseFloat(subtotal).toFixed(decimal_degits);
+        }
+        
+        html.push('<td class="text-green">'+subtotal_display+'</td>');
         html.push(val.takeAway);
         var createdAt_val='';
         if (val.createdAt) {
