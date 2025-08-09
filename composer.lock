@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fed378ccb94f90c45100767ea9356594",
+    "content-hash": "0d8305b227b857cbdfe43daaa007f50c",
     "packages": [
         {
             "name": "beste/clock",
@@ -973,16 +973,16 @@
         },
         {
             "name": "google/apiclient-services",
-            "version": "v0.391.0",
+            "version": "v0.406.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/googleapis/google-api-php-client-services.git",
-                "reference": "911ebf7a6b570780fb994c007344cf3da4187de6"
+                "reference": "8366037e450b62ffc1c5489459f207640acca2b4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/googleapis/google-api-php-client-services/zipball/911ebf7a6b570780fb994c007344cf3da4187de6",
-                "reference": "911ebf7a6b570780fb994c007344cf3da4187de6",
+                "url": "https://api.github.com/repos/googleapis/google-api-php-client-services/zipball/8366037e450b62ffc1c5489459f207640acca2b4",
+                "reference": "8366037e450b62ffc1c5489459f207640acca2b4",
                 "shasum": ""
             },
             "require": {
@@ -1011,9 +1011,9 @@
             ],
             "support": {
                 "issues": "https://github.com/googleapis/google-api-php-client-services/issues",
-                "source": "https://github.com/googleapis/google-api-php-client-services/tree/v0.391.0"
+                "source": "https://github.com/googleapis/google-api-php-client-services/tree/v0.406.0"
             },
-            "time": "2025-01-20T01:04:13+00:00"
+            "time": "2025-06-04T17:28:44+00:00"
         },
         {
             "name": "google/auth",
