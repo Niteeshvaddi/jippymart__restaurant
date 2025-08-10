@@ -50,7 +50,6 @@
                                             <th>{{ trans('lang.food_image') }}</th>
                                             <th>{{ trans('lang.food_name') }}</th>
                                             <th>{{ trans('lang.food_price') }}</th>
-                                            <th>{{ trans('lang.food_discount') }}</th>
                                             <th>{{ trans('lang.food_category_id') }}</th>
                                             <th>{{ trans('lang.date') }}</th>
                                             <th>{{ trans('lang.food_publish') }}</th>
@@ -72,39 +71,6 @@
     </div>
 @endsection
 @section('scripts')
-    <style>
-        .editable-price {
-            transition: all 0.2s ease;
-            border-radius: 3px;
-            padding: 2px 4px;
-            cursor: pointer;
-        }
-        .editable-price:hover {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-        }
-        .editable-price.text-success {
-            background-color: #d4edda !important;
-            border-color: #c3e6cb !important;
-        }
-        .editable-price.text-danger {
-            background-color: #f8d7da !important;
-            border-color: #f5c6cb !important;
-        }
-        .editable-price input {
-            border: 2px solid #007bff;
-            border-radius: 3px;
-            padding: 2px 4px;
-            font-size: inherit;
-        }
-        .text-success {
-            color: #28a745 !important;
-            font-weight: 500;
-        }
-        .alert {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-    </style>
     <script type="text/javascript">
         var database = firebase.firestore();
         var offest = 1;
@@ -153,7 +119,7 @@
                     const searchValue = data.search.value.toLowerCase();
                     const orderColumnIndex = data.order[0].column;
                     const orderDirection = data.order[0].dir;
-                    const orderableColumns = ['', '', 'name', 'finalPrice', 'disPrice', 'categoryName', 'createdAt',
+                    const orderableColumns = ['', '', 'name', 'finalPrice', 'categoryName', 'createdAt',
                         '', ''
                     ]; // Ensure this matches the actual column names
                     const orderByField = orderableColumns[orderColumnIndex];
@@ -209,9 +175,6 @@
                                     (childData.finalPrice && childData.finalPrice
                                         .toString().toLowerCase().includes(searchValue)
                                     ) ||
-                                    (childData.disPrice && childData.disPrice
-                                        .toString().toLowerCase().includes(searchValue)
-                                    ) ||
                                     (childData.categoryName && childData.categoryName
                                         .toString().toLowerCase().includes(
                                             searchValue) ||
@@ -237,7 +200,7 @@
                                     .toDate()).getTime() : 0;
                                 } catch (err) {}
                             }
-                            if (orderByField === 'finalPrice' || orderByField === 'disPrice') {
+                            if (orderByField === 'finalPrice') {
                                 aValue = a[orderByField] ? parseInt(a[orderByField]) : 0;
                                 bValue = b[orderByField] ? parseInt(b[orderByField]) : 0;
                             } else {
@@ -279,10 +242,10 @@
                 order: [5, 'asc'],
                 columnDefs: [{
                         orderable: false,
-                        targets: [0, 1, 7, 8]
+                        targets: [0, 1, 6, 7]
                     },
                     {
-                        targets: 6,
+                        targets: 5,
                         type: 'date',
                         render: function(data) {
                             return data;
@@ -337,23 +300,24 @@
                     '\'" class="rounded" style="width:50px" src="' + val.photo + '" alt="image"></td>');
             }
             html.push('<td data-url="' + route1 + '" class="redirecttopage">' + val.name + '</td>');
-            
-            // Original Price Column
-            if (currencyAtRight) {
-                html.push('<td><span class="editable-price text-gray" data-id="' + val.id + '" data-field="price" data-value="' + parseFloat(val.price).toFixed(decimal_degits) + '" style="text-decoration: line-through;">' + parseFloat(val.price).toFixed(decimal_degits) + '' + activeCurrency + '</span></td>');
-            } else {
-                html.push('<td><span class="editable-price text-gray" data-id="' + val.id + '" data-field="price" data-value="' + parseFloat(val.price).toFixed(decimal_degits) + '" style="text-decoration: line-through;">' + activeCurrency + '' + parseFloat(val.price).toFixed(decimal_degits) + '</span></td>');
-            }
-            
-            // Discount Price Column
             if (val.hasOwnProperty('disPrice') && val.disPrice != '' && val.disPrice != '0') {
                 if (currencyAtRight) {
-                    html.push('<td><span class="editable-price text-green" data-id="' + val.id + '" data-field="disPrice" data-value="' + parseFloat(val.disPrice).toFixed(decimal_degits) + '">' + parseFloat(val.disPrice).toFixed(decimal_degits) + '' + activeCurrency + '</span></td>');
+                    html.push('<td class="text-green">' + parseFloat(val.disPrice).toFixed(decimal_degits) + '' +
+                        activeCurrency + ' <s>' + parseFloat(val.price).toFixed(decimal_degits) + '' +
+                        activeCurrency + '</s></td>');
                 } else {
-                    html.push('<td><span class="editable-price text-green" data-id="' + val.id + '" data-field="disPrice" data-value="' + parseFloat(val.disPrice).toFixed(decimal_degits) + '">' + activeCurrency + '' + parseFloat(val.disPrice).toFixed(decimal_degits) + '</span></td>');
+                    html.push('<td class="text-green">' + activeCurrency + '' + parseFloat(val.disPrice).toFixed(
+                        decimal_degits) + ' <s>' + activeCurrency + '' + parseFloat(val.price).toFixed(
+                        decimal_degits) + '</s></td>');
                 }
             } else {
-                html.push('<td><span class="editable-price text-muted" data-id="' + val.id + '" data-field="disPrice" data-value="0">-</span></td>');
+                if (currencyAtRight) {
+                    html.push('<td class="text-green">' + parseFloat(val.price).toFixed(decimal_degits) + '' +
+                        activeCurrency + '</td>');
+                } else {
+                    html.push('<td class="text-green">' + activeCurrency + '' + parseFloat(val.price).toFixed(
+                        decimal_degits) + '</td>');
+                }
             }
             
             html.push('<td class="category_' + val.categoryID + '">' + val.categoryName + '</td>');
@@ -460,112 +424,5 @@
             })
             return vendorId;
         }
-
-        // Inline editing functionality for prices
-        $(document).on('click', '.editable-price', function() {
-            var $this = $(this);
-            var currentValue = $this.data('value');
-            var field = $this.data('field');
-            var id = $this.data('id');
-            
-            // Don't allow editing if value is "-"
-            if (currentValue === 0 && field === 'disPrice') {
-                currentValue = '';
-            }
-            
-            // Create input field
-            var input = $('<input>', {
-                type: 'number',
-                step: '0.01',
-                min: '0',
-                class: 'form-control form-control-sm',
-                value: currentValue,
-                style: 'width: 80px; display: inline-block;'
-            });
-            
-            // Replace span with input
-            $this.hide();
-            $this.after(input);
-            input.focus();
-            
-            // Handle save on enter or blur
-            function saveValue() {
-                var newValue = parseFloat(input.val());
-                if (isNaN(newValue) || newValue < 0) {
-                    newValue = 0;
-                }
-                
-                // Update the data attribute
-                $this.data('value', newValue);
-                
-                // Update the display
-                var displayValue = newValue.toFixed(decimal_degits);
-                var displayHtml = '';
-                
-                if (field === 'price') {
-                    // Original price with strike-through
-                    if (currencyAtRight) {
-                        displayHtml = displayValue + activeCurrency;
-                    } else {
-                        displayHtml = activeCurrency + displayValue;
-                    }
-                    $this.html(displayHtml).css('text-decoration', 'line-through');
-                } else if (field === 'disPrice') {
-                    // Discount price in green
-                    if (newValue === 0) {
-                        displayHtml = '-';
-                        $this.removeClass('text-success').addClass('text-muted');
-                    } else {
-                        if (currencyAtRight) {
-                            displayHtml = displayValue + activeCurrency;
-                        } else {
-                            displayHtml = activeCurrency + displayValue;
-                        }
-                        $this.removeClass('text-muted').addClass('text-success');
-                    }
-                    $this.html(displayHtml).css('text-decoration', 'none');
-                }
-                
-                // Remove input and show span
-                input.remove();
-                $this.show();
-                
-                // Update in database
-                var updateData = {};
-                updateData[field] = newValue;
-                
-                database.collection('vendor_products').doc(id).update(updateData).then(function() {
-                    // Show success indicator
-                    $this.addClass('text-success');
-                    setTimeout(function() {
-                        $this.removeClass('text-success');
-                    }, 1000);
-                }).catch(function(error) {
-                    console.error('Error updating price:', error);
-                    // Show error indicator
-                    $this.addClass('text-danger');
-                    setTimeout(function() {
-                        $this.removeClass('text-danger');
-                    }, 2000);
-                });
-            }
-            
-            input.on('blur', saveValue);
-            input.on('keypress', function(e) {
-                if (e.which === 13) { // Enter key
-                    saveValue();
-                }
-            });
-            
-            // Handle escape key
-            input.on('keydown', function(e) {
-                if (e.which === 27) { // Escape key
-                    input.remove();
-                    $this.show();
-                }
-            });
-        });
-
-
     </script>
 @endsection
