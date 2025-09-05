@@ -1,5 +1,35 @@
 @extends('layouts.app')
 @section('content')
+<style>
+    .text-success {
+    background-color: #d4edda !important;
+    border-color: #c3e6cb !important;
+    color: #218838;
+}
+    .editable-price {
+        transition: all 0.2s ease;
+        border-radius: 3px;
+        padding: 2px 4px;
+    }
+    .editable-price:hover {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+    }
+    .editable-price.text-success {
+        background-color: #d4edda !important;
+        border-color: #c3e6cb !important;
+    }
+    .editable-price.text-danger {
+        background-color: #f8d7da !important;
+        border-color: #f5c6cb !important;
+    }
+    .editable-price input {
+        border: 2px solid #007bff;
+        border-radius: 3px;
+        padding: 2px 4px;
+        font-size: inherit;
+    }
+</style>
     <div class="page-wrapper">
         <div class="row page-titles">
             <div class="col-md-5 align-self-center">
@@ -38,24 +68,25 @@
                         <div class="card-body">
                             <div class="table-responsive m-t-10">
                                 <table id="example24"
-                                    class="display nowrap table table-hover table-striped table-bordered table table-striped"
-                                    cellspacing="0" width="100%">
+                                       class="display nowrap table table-hover table-striped table-bordered table table-striped"
+                                       cellspacing="0" width="100%">
                                     <thead>
-                                        <tr>
-                                            <th class="delete-all"><input type="checkbox" id="is_active"><label
-                                                    class="col-3 control-label" for="is_active">
-                                                    <a id="deleteAll" class="do_not_delete" href="javascript:void(0)"><i
-                                                            class="fa fa-trash"></i> {{ trans('lang.all') }}</a></label>
-                                            </th>
-                                            <th>{{ trans('lang.food_image') }}</th>
-                                            <th>{{ trans('lang.food_name') }}</th>
-                                            <th>{{ trans('lang.food_price') }}</th>
-                                            <th>{{ trans('lang.food_category_id') }}</th>
-                                            <th>{{ trans('lang.date') }}</th>
-                                            <th>{{ trans('lang.food_publish') }}</th>
-                                            <th>{{ trans('lang.food_available') }}</th>
-                                            <th>{{ trans('lang.actions') }}</th>
-                                        </tr>
+                                    <tr>
+                                        <th class="delete-all"><input type="checkbox" id="is_active"><label
+                                                class="col-3 control-label" for="is_active">
+                                                <a id="deleteAll" class="do_not_delete" href="javascript:void(0)"><i
+                                                        class="fa fa-trash"></i> {{ trans('lang.all') }}</a></label>
+                                        </th>
+                                        <th>{{ trans('lang.food_image') }}</th>
+                                        <th>{{ trans('lang.food_name') }}</th>
+                                        <th>{{ trans('lang.food_price') }}</th>
+                                        <th>Discount Price</th>
+                                        <th>{{ trans('lang.food_category_id') }}</th>
+                                        <th>{{ trans('lang.date') }}</th>
+                                        <th>{{ trans('lang.food_publish') }}</th>
+                                        <th>{{ trans('lang.food_available') }}</th>
+                                        <th>{{ trans('lang.actions') }}</th>
+                                    </tr>
                                     </thead>
                                     <tbody id="append_list1">
                                     </tbody>
@@ -119,7 +150,7 @@
                     const searchValue = data.search.value.toLowerCase();
                     const orderColumnIndex = data.order[0].column;
                     const orderDirection = data.order[0].dir;
-                    const orderableColumns = ['', '', 'name', 'finalPrice', 'categoryName', 'createdAt',
+                    const orderableColumns = ['', '', 'name', 'finalPrice', 'disPrice', 'categoryName', 'createdAt',
                         '', ''
                     ]; // Ensure this matches the actual column names
                     const orderByField = orderableColumns[orderColumnIndex];
@@ -173,11 +204,11 @@
                                     (childData.name && childData.name.toString()
                                         .toLowerCase().includes(searchValue)) ||
                                     (childData.finalPrice && childData.finalPrice
-                                        .toString().toLowerCase().includes(searchValue)
+                                            .toString().toLowerCase().includes(searchValue)
                                     ) ||
                                     (childData.categoryName && childData.categoryName
-                                        .toString().toLowerCase().includes(
-                                            searchValue) ||
+                                            .toString().toLowerCase().includes(
+                                                searchValue) ||
                                         (createdAt && createdAt.toString().toLowerCase()
                                             .indexOf(searchValue) > -1)
                                     )
@@ -192,12 +223,12 @@
                             let aValue = a[orderByField];
                             let bValue = b[orderByField];
                             if (orderByField === 'createdAt' && a[orderByField] != '' && b[
-                                    orderByField] != '') {
+                                orderByField] != '') {
                                 try {
                                     aValue = a[orderByField] ? new Date(a[orderByField]
-                                    .toDate()).getTime() : 0;
+                                        .toDate()).getTime() : 0;
                                     bValue = b[orderByField] ? new Date(b[orderByField]
-                                    .toDate()).getTime() : 0;
+                                        .toDate()).getTime() : 0;
                                 } catch (err) {}
                             }
                             if (orderByField === 'finalPrice') {
@@ -241,11 +272,11 @@
                 },
                 order: [5, 'asc'],
                 columnDefs: [{
-                        orderable: false,
-                        targets: [0, 1, 6, 7]
-                    },
+                    orderable: false,
+                    targets: [0, 1, 7, 8]
+                },
                     {
-                        targets: 5,
+                        targets: 6,
                         type: 'date',
                         render: function(data) {
                             return data;
@@ -300,26 +331,31 @@
                     '\'" class="rounded" style="width:50px" src="' + val.photo + '" alt="image"></td>');
             }
             html.push('<td data-url="' + route1 + '" class="redirecttopage">' + val.name + '</td>');
-            if (val.hasOwnProperty('disPrice') && val.disPrice != '' && val.disPrice != '0') {
+            // Original Price Column - editable
+            if (val.hasOwnProperty('disPrice') && val.disPrice != '' && val.disPrice != '0' && val.disPrice != val.price) {
+                // Has discount - show original price with strikethrough
                 if (currencyAtRight) {
-                    html.push('<td class="text-green">' + parseFloat(val.disPrice).toFixed(decimal_degits) + '' +
-                        activeCurrency + ' <s>' + parseFloat(val.price).toFixed(decimal_degits) + '' +
-                        activeCurrency + '</s></td>');
+                    html.push('<td><span class="editable-price text-muted" style="text-decoration: line-through; cursor: pointer;" data-id="' + val.id + '" data-field="price" data-value="' + val.price + '">' + parseFloat(val.price).toFixed(decimal_degits) + '' + activeCurrency + '</span></td>');
                 } else {
-                    html.push('<td class="text-green">' + activeCurrency + '' + parseFloat(val.disPrice).toFixed(
-                        decimal_degits) + ' <s>' + activeCurrency + '' + parseFloat(val.price).toFixed(
-                        decimal_degits) + '</s></td>');
+                    html.push('<td><span class="editable-price text-muted" style="text-decoration: line-through; cursor: pointer;" data-id="' + val.id + '" data-field="price" data-value="' + val.price + '">' + activeCurrency + '' + parseFloat(val.price).toFixed(decimal_degits) + '</span></td>');
+                }
+                // Show discount price in green - editable
+                if (currencyAtRight) {
+                    html.push('<td><span class="editable-price text-success" style="cursor: pointer;" data-id="' + val.id + '" data-field="disPrice" data-value="' + val.disPrice + '">' + parseFloat(val.disPrice).toFixed(decimal_degits) + '' + activeCurrency + '</span></td>');
+                } else {
+                    html.push('<td><span class="editable-price text-success" style="cursor: pointer;" data-id="' + val.id + '" data-field="disPrice" data-value="' + val.disPrice + '">' + activeCurrency + '' + parseFloat(val.disPrice).toFixed(decimal_degits) + '</span></td>');
                 }
             } else {
+                // No discount - show regular price - editable
                 if (currencyAtRight) {
-                    html.push('<td class="text-green">' + parseFloat(val.price).toFixed(decimal_degits) + '' +
-                        activeCurrency + '</td>');
+                    html.push('<td><span class="editable-price text-success" style="cursor: pointer;" data-id="' + val.id + '" data-field="price" data-value="' + val.price + '">' + parseFloat(val.price).toFixed(decimal_degits) + '' + activeCurrency + '</span></td>');
                 } else {
-                    html.push('<td class="text-green">' + activeCurrency + '' + parseFloat(val.price).toFixed(
-                        decimal_degits) + '</td>');
+                    html.push('<td><span class="editable-price text-success" style="cursor: pointer;" data-id="' + val.id + '" data-field="price" data-value="' + val.price + '">' + activeCurrency + '' + parseFloat(val.price).toFixed(decimal_degits) + '</span></td>');
                 }
+                // Empty cell where discount price would be - editable
+                html.push('<td><span class="editable-price text-muted" style="cursor: pointer;" data-id="' + val.id + '" data-field="disPrice" data-value="0">-</span></td>');
             }
-            
+
             html.push('<td class="category_' + val.categoryID + '">' + val.categoryName + '</td>');
             html.push('<td>'+val.createDateTime+'</td>');
             if (val.publish) {
@@ -424,5 +460,136 @@
             })
             return vendorId;
         }
+
+        // Inline editing functionality for prices - using backend validation
+        $(document).on('click', '.editable-price', function() {
+            var $this = $(this);
+            var currentValue = $this.data('value');
+            var field = $this.data('field');
+            var id = $this.data('id');
+
+            console.log('Inline edit clicked:', { id: id, field: field, currentValue: currentValue });
+
+            // Create input field
+            var input = $('<input>', {
+                type: 'number',
+                step: '0.01',
+                min: '0',
+                class: 'form-control form-control-sm',
+                value: currentValue,
+                style: 'width: 80px; display: inline-block;'
+            });
+
+            // Replace span with input
+            $this.hide();
+            $this.after(input);
+            input.focus();
+
+            // Handle save on enter or blur
+            function saveValue() {
+                var newValue = parseFloat(input.val());
+                if (isNaN(newValue) || newValue < 0) {
+                    newValue = 0;
+                }
+
+                console.log('Saving value:', { id: id, field: field, newValue: newValue });
+
+                // Remove input and show span
+                input.remove();
+                $this.show();
+
+                // Show loading indicator
+                $this.addClass('text-info');
+                $this.text('Updating...');
+
+                // Send AJAX request to backend for proper validation and data consistency
+                $.ajax({
+                    url: '{{ route("foods.inlineUpdate", ":id") }}'.replace(':id', id),
+                    method: 'PATCH',
+                    data: {
+                        field: field,
+                        value: newValue,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        console.log('Update response:', response);
+                        if (response.success) {
+                            // Update the data attribute
+                            $this.data('value', newValue);
+
+                            // Update the display
+                            var displayValue = newValue.toFixed(decimal_degits);
+                            if (currencyAtRight) {
+                                $this.text(displayValue + activeCurrency);
+                            } else {
+                                $this.text(activeCurrency + displayValue);
+                            }
+
+                            // Show success indicator
+                            $this.removeClass('text-info').addClass('text-success');
+                            setTimeout(function() {
+                                $this.removeClass('text-success');
+                            }, 1000);
+
+                            // If there's a message about discount price being reset, show it
+                            if (response.message && response.message.includes('discount price was reset')) {
+                                // Find and update the discount price cell if it exists
+                                var discountCell = $this.closest('tr').find('.editable-price[data-field="disPrice"]');
+                                if (discountCell.length > 0) {
+                                    discountCell.data('value', 0);
+                                    discountCell.text('-');
+                                    discountCell.removeClass('text-success').addClass('text-muted');
+                                }
+                            }
+                        } else {
+                            // Show error message
+                            alert('Update failed: ' + response.message);
+                            // Revert to original value
+                            var originalValue = currentValue;
+                            var displayValue = originalValue.toFixed(decimal_degits);
+                            if (currencyAtRight) {
+                                $this.text(displayValue + activeCurrency);
+                            } else {
+                                $this.text(activeCurrency + displayValue);
+                            }
+                            $this.removeClass('text-info');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Update error:', { xhr: xhr, status: status, error: error });
+                        var errorMessage = 'Update failed';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        alert(errorMessage);
+
+                        // Revert to original value
+                        var originalValue = currentValue;
+                        var displayValue = originalValue.toFixed(decimal_degits);
+                        if (currencyAtRight) {
+                            $this.text(displayValue + activeCurrency);
+                        } else {
+                            $this.text(activeCurrency + displayValue);
+                        }
+                        $this.removeClass('text-info');
+                    }
+                });
+            }
+
+            input.on('blur', saveValue);
+            input.on('keypress', function(e) {
+                if (e.which === 13) { // Enter key
+                    saveValue();
+                }
+            });
+
+            // Handle escape key
+            input.on('keydown', function(e) {
+                if (e.which === 27) { // Escape key
+                    input.remove();
+                    $this.show();
+                }
+            });
+        });
     </script>
 @endsection
