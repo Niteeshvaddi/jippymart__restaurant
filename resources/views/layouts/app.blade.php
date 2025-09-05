@@ -351,6 +351,43 @@
                 @yield('content')
             </main>
 
+            <!-- Impersonation Banner -->
+            <script>
+            // Check if user is impersonated and show notification
+            (function() {
+                const impersonationData = localStorage.getItem('restaurant_impersonation');
+                
+                if (impersonationData) {
+                    try {
+                        const data = JSON.parse(impersonationData);
+                        
+                        if (data.isImpersonated) {
+                            // Show impersonation banner
+                            const banner = document.createElement('div');
+                            banner.innerHTML = `
+                                <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; margin-bottom: 20px; border-radius: 5px; position: relative; z-index: 1000;">
+                                    <strong>🔐 Admin Impersonation Active</strong><br>
+                                    You are currently logged in as this restaurant owner for support purposes.<br>
+                                    <small>Impersonated at: ${new Date(data.impersonatedAt).toLocaleString()}</small>
+                                    <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
+                                </div>
+                            `;
+                            
+                            // Insert at the top of the main content
+                            const main = document.querySelector('main');
+                            if (main && main.firstChild) {
+                                main.insertBefore(banner, main.firstChild);
+                            } else if (main) {
+                                main.appendChild(banner);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error parsing impersonation data:', error);
+                    }
+                }
+            })();
+            </script>
+
             <div class="modal fade" id="notification_add_order" tabindex="-1" role="dialog" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered notification-main" role="document">
                     <div class="modal-content">
@@ -480,6 +517,27 @@
         <script src="https://www.gstatic.com/firebasejs/7.2.0/firebase-storage.js"></script>
         <script src="https://www.gstatic.com/firebasejs/7.2.0/firebase-auth.js"></script>
         <script src="https://www.gstatic.com/firebasejs/7.2.0/firebase-database.js"></script>
+
+        <!-- Firebase Configuration -->
+        <script>
+            // Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyAf_lICoxPh8qKE1QnVkmQYTFJXKkYmRXU",
+                authDomain: "jippymart-27c08.firebaseapp.com",
+                databaseURL: "https://jippymart-27c08-default-rtdb.firebaseio.com",
+                projectId: "jippymart-27c08",
+                storageBucket: "jippymart-27c08.firebasestorage.app",
+                messagingSenderId: "592427852800",
+                appId: "1:592427852800:web:f74df8ceb2a4b597d1a4e5",
+                measurementId: "G-ZYBQYPZWCF"
+            };
+
+            // Initialize Firebase
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log('✅ Firebase initialized in main layout');
+            }
+        </script>
         <script src="https://unpkg.com/geofirestore/dist/geofirestore.js"></script>
         <script src="https://cdn.firebase.com/libs/geofire/5.0.1/geofire.min.js"></script>
         <script src="{{ asset('js/crypto-js.js') }}"></script>
@@ -1044,6 +1102,38 @@
                 })
 
             
+        </script>
+
+        <!-- Impersonation Banner -->
+        <script>
+        // Check if user is impersonated and show notification
+        (function() {
+            const impersonationData = localStorage.getItem('restaurant_impersonation');
+            if (impersonationData) {
+                try {
+                    const data = JSON.parse(impersonationData);
+                    if (data.isImpersonated) {
+                        const banner = document.createElement('div');
+                        banner.innerHTML = `
+                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; margin-bottom: 20px; border-radius: 5px; position: relative; z-index: 1000;">
+                                <strong>🔐 Admin Impersonation Active</strong><br>
+                                You are currently logged in as this restaurant owner for support purposes.<br>
+                                <small>Impersonated at: ${new Date(data.impersonatedAt).toLocaleString()}</small>
+                                <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
+                            </div>
+                        `;
+                        const main = document.querySelector('main');
+                        if (main && main.firstChild) {
+                            main.insertBefore(banner, main.firstChild);
+                        } else if (main) {
+                            main.appendChild(banner);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error parsing impersonation data:', error);
+                }
+            }
+        })();
         </script>
     </body>
 

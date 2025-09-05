@@ -73,6 +73,27 @@ Route::get('failed', [App\Http\Controllers\SubscriptionController::class, 'faile
 
 Route::get('notify', [App\Http\Controllers\SubscriptionController::class, 'notify'])->name('notify');
 
+// Secure Impersonation API Routes
+Route::prefix('api/impersonation')->middleware(['throttle:60,1'])->group(function () {
+    Route::post('/generate', [App\Http\Controllers\ImpersonationSecurityController::class, 'generateSecureImpersonationToken'])->name('impersonation.generate');
+    Route::post('/validate', [App\Http\Controllers\ImpersonationSecurityController::class, 'validateSecureImpersonationToken'])->name('impersonation.validate');
+});
+
+// Monitoring and Health Check Routes
+Route::prefix('api/monitoring')->middleware(['throttle:120,1'])->group(function () {
+    Route::get('/health', [App\Http\Controllers\ImpersonationMonitoringController::class, 'getSystemHealth'])->name('monitoring.health');
+    Route::get('/performance', [App\Http\Controllers\ImpersonationMonitoringController::class, 'getPerformanceMetrics'])->name('monitoring.performance');
+    Route::get('/security', [App\Http\Controllers\ImpersonationMonitoringController::class, 'getSecurityStatistics'])->name('monitoring.security');
+    Route::get('/test', [App\Http\Controllers\ImpersonationMonitoringController::class, 'testImpersonationSystem'])->name('monitoring.test');
+    Route::post('/cleanup', [App\Http\Controllers\ImpersonationMonitoringController::class, 'cleanupOldData'])->name('monitoring.cleanup');
+});
+
+// Security Audit Routes
+Route::prefix('api/security')->middleware(['throttle:60,1'])->group(function () {
+    Route::get('/audit-logs', [App\Http\Controllers\ImpersonationMonitoringController::class, 'getSecurityAuditLogs'])->name('security.audit-logs');
+    Route::get('/audit-logs/{id}', [App\Http\Controllers\ImpersonationMonitoringController::class, 'getSecurityEvent'])->name('security.audit-event');
+});
+
 Auth::routes();
 
 Route::get('forgot-password', [App\Http\Controllers\Auth\LoginController::class, 'forgotPassword'])->name('forgot-password');
@@ -112,11 +133,11 @@ Route::middleware(['check.subscription'])->group(function () {
 
     Route::get('/payments/create', [App\Http\Controllers\PayoutsController::class, 'create'])->name('payments.create');
 
-    Route::get('/payments/edit/{id}', [App\Http\Controllers\PaymentController::class, 'edit'])->name('payments.edit');
+    // Route::get('/payments/edit/{id}', [App\Http\Controllers\PaymentController::class, 'edit'])->name('payments.edit');
 
-    Route::get('/earnings', [App\Http\Controllers\EarningController::class, 'index'])->name('earnings');
+    // Route::get('/earnings', [App\Http\Controllers\EarningController::class, 'index'])->name('earnings');
 
-    Route::get('/earnings/edit/{id}', [App\Http\Controllers\EarningController::class, 'edit'])->name('earnings.edit');
+    // Route::get('/earnings/edit/{id}', [App\Http\Controllers\EarningController::class, 'edit'])->name('earnings.edit');
 
     Route::get('/coupons', [App\Http\Controllers\CouponController::class, 'index'])->name('coupons');
 

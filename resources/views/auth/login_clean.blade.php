@@ -370,25 +370,21 @@ foreach ($countries as $keycountry => $valuecountry) {
         <!-- Firebase Configuration -->
         <script>
             // Firebase configuration (should match your admin panel config)
-            if (typeof firebaseConfig === 'undefined') {
-                const firebaseConfig = {
-                    apiKey: "AIzaSyAf_lICoxPh8qKE1QnVkmQYTFJXKkYmRXU",
-                    authDomain: "jippymart-27c08.firebaseapp.com",
-                    databaseURL: "https://jippymart-27c08-default-rtdb.firebaseio.com",
-                    projectId: "jippymart-27c08",
-                    storageBucket: "jippymart-27c08.firebasestorage.app",
-                    messagingSenderId: "592427852800",
-                    appId: "1:592427852800:web:f74df8ceb2a4b597d1a4e5",
-                    measurementId: "G-ZYBQYPZWCF"
-                };
+            const firebaseConfig = {
+                apiKey: "AIzaSyAf_lICoxPh8qKE1QnVkmQYTFJXKkYmRXU",
+                authDomain: "jippymart-27c08.firebaseapp.com",
+                databaseURL: "https://jippymart-27c08-default-rtdb.firebaseio.com",
+                projectId: "jippymart-27c08",
+                storageBucket: "jippymart-27c08.firebasestorage.app",
+                messagingSenderId: "592427852800",
+                appId: "1:592427852800:web:f74df8ceb2a4b597d1a4e5",
+                measurementId: "G-ZYBQYPZWCF"
+            };
 
-                // Initialize Firebase only if not already initialized
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                    console.log('✅ Firebase initialized in restaurant panel');
-                } else {
-                    console.log('✅ Firebase already initialized');
-                }
+            // Initialize Firebase
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log('✅ Firebase initialized in restaurant panel');
             }
         </script>
 
@@ -405,18 +401,11 @@ foreach ($countries as $keycountry => $valuecountry) {
             const restaurantUid = urlParams.get('restaurant_uid');
             const autoLogin = urlParams.get('auto_login');
             
-            console.log('🔍 Current URL:', window.location.href);
             console.log('🔍 URL Parameters:', {
                 impersonationToken: impersonationToken ? 'Present' : 'Missing',
                 restaurantUid: restaurantUid ? 'Present' : 'Missing',
                 autoLogin: autoLogin
             });
-            
-            // Debug: Show all URL parameters
-            console.log('🔍 All URL parameters:');
-            for (let [key, value] of urlParams.entries()) {
-                console.log(`  ${key}: ${value}`);
-            }
             
             // Only proceed if we have all required parameters
             if (impersonationToken && restaurantUid && autoLogin === 'true') {
@@ -425,32 +414,21 @@ foreach ($countries as $keycountry => $valuecountry) {
                 // Show loading immediately
                 showLoading();
                 
-                // Wait for Firebase to be ready with retry mechanism
-                let firebaseRetries = 0;
-                const maxRetries = 10;
-                
-                const waitForFirebase = setInterval(function() {
-                    firebaseRetries++;
-                    console.log(`🔄 Waiting for Firebase... (attempt ${firebaseRetries}/${maxRetries})`);
-                    
+                // Wait for Firebase to be ready
+                setTimeout(function() {
                     if (typeof firebase !== 'undefined' && firebase.auth) {
-                        clearInterval(waitForFirebase);
-                        console.log('✅ Firebase is ready, starting auto-login');
                         startAutoLogin();
-                    } else if (firebaseRetries >= maxRetries) {
-                        clearInterval(waitForFirebase);
-                        console.error('❌ Firebase not available after maximum retries');
+                    } else {
+                        console.error('❌ Firebase not available');
                         showError('Firebase not loaded. Please refresh the page.');
                     }
-                }, 500);
+                }, 1000);
             } else {
                 console.log('ℹ️ No impersonation parameters, showing normal login');
             }
             
             function startAutoLogin() {
                 console.log('🚀 Starting auto-login...');
-                console.log('🔍 Token length:', impersonationToken ? impersonationToken.length : 'No token');
-                console.log('🔍 Restaurant UID:', restaurantUid);
                 
                 const auth = firebase.auth();
                 
@@ -482,11 +460,6 @@ foreach ($countries as $keycountry => $valuecountry) {
                     })
                     .catch(function(error) {
                         console.error('❌ Login failed:', error);
-                        console.error('❌ Error details:', {
-                            code: error.code,
-                            message: error.message,
-                            tokenLength: impersonationToken ? impersonationToken.length : 'No token'
-                        });
                         showError('Auto-login failed: ' + error.message);
                         
                         // Clean URL

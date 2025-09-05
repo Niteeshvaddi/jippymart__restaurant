@@ -17,6 +17,12 @@ class AdminImpersonationController extends Controller
     public function __construct()
     {
         // Initialize Firebase Admin SDK
+        // Temporarily disabled to fix routing issues
+        $this->firebase = null;
+        $this->auth = null;
+        
+        // TODO: Fix Firebase configuration and re-enable
+        /*
         $this->firebase = (new Factory)
             ->withServiceAccount([
                 "type" => "service_account",
@@ -33,6 +39,7 @@ class AdminImpersonationController extends Controller
             ->create();
 
         $this->auth = $this->firebase->getAuth();
+        */
     }
 
     /**
