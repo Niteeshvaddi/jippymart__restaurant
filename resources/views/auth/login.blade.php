@@ -575,6 +575,27 @@ foreach ($countries as $keycountry => $valuecountry) {
 
         <script src="https://www.gstatic.com/firebasejs/7.2.0/firebase-database.js"></script>
 
+        <!-- Firebase Configuration -->
+        <script>
+            // Firebase configuration (should match your admin panel config)
+            const firebaseConfig = {
+                apiKey: "AIzaSyAf_lICoxPh8qKE1QnVkmQYTFJXKkYmRXU",
+                authDomain: "jippymart-27c08.firebaseapp.com",
+                databaseURL: "https://jippymart-27c08-default-rtdb.firebaseio.com",
+                projectId: "jippymart-27c08",
+                storageBucket: "jippymart-27c08.firebasestorage.app",
+                messagingSenderId: "592427852800",
+                appId: "1:592427852800:web:f74df8ceb2a4b597d1a4e5",
+                measurementId: "G-ZYBQYPZWCF"
+            };
+
+            // Initialize Firebase
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log('✅ Firebase initialized in restaurant panel');
+            }
+        </script>
+
         <script src="{{ asset('js/crypto-js.js') }}"></script>
 
         <script src="{{ asset('js/jquery.cookie.js') }}"></script>
@@ -1597,8 +1618,146 @@ foreach ($countries as $keycountry => $valuecountry) {
 
 
 
+
+    <script>
+// Simple and Reliable Auto-Login Script for Restaurant Panel
+(function() {
+    console.log('🔍 Auto-login script loaded');
+    console.log('🔍 Current URL:', window.location.href);
+    console.log('🔍 Current search params:', window.location.search);
+    
+    // Check if we have impersonation parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const impersonationToken = urlParams.get('impersonation_token');
+    const restaurantUid = urlParams.get('restaurant_uid');
+    const autoLogin = urlParams.get('auto_login');
+    
+    console.log('🔍 URL Parameters:', {
+        impersonationToken: impersonationToken ? 'Present' : 'Missing',
+        restaurantUid: restaurantUid ? 'Present' : 'Missing',
+        autoLogin: autoLogin
+    });
+    
+    // Debug: Show all URL parameters
+    console.log('🔍 All URL parameters:');
+    for (let [key, value] of urlParams.entries()) {
+        console.log(`  ${key}: ${value}`);
+    }
+    
+    if (impersonationToken && restaurantUid && autoLogin === 'true') {
+        console.log('🔐 Auto-login with impersonation token detected');
+        
+        // Show alert to confirm script is running
+        alert('🔍 Auto-login script is running! Check console for details.');
+        
+        // Set a flag to prevent other auth listeners from interfering
+        localStorage.setItem('impersonation_in_progress', 'true');
+        localStorage.setItem('impersonation_target_url', '/dashboard');
+        
+        // Wait for Firebase to be ready
+        const checkFirebase = setInterval(function() {
+            if (typeof firebase !== 'undefined' && firebase.auth) {
+                clearInterval(checkFirebase);
+                console.log('✅ Firebase is ready, starting authentication');
+                
+                // Show loading indicator
+                showImpersonationLoading();
+                
+                const auth = firebase.auth();
+                
+                // Sign in with custom token
+                auth.signInWithCustomToken(impersonationToken)
+                    .then(function(userCredential) {
+                        console.log('✅ Successfully logged in with impersonation token');
+                        
+                        // Verify the user is the correct restaurant owner
+                        if (userCredential.user.uid !== restaurantUid) {
+                            throw new Error('Token UID mismatch. Security violation detected.');
+                        }
+                        
+                        // Store impersonation info
+                        localStorage.setItem('restaurant_impersonation', JSON.stringify({
+                            isImpersonated: true,
+                            restaurantUid: restaurantUid,
+                            impersonatedAt: new Date().toISOString(),
+                            tokenUsed: true
+                        }));
+                        
+                        // Force redirect to dashboard after a short delay
+                        setTimeout(function() {
+                            console.log('🔄 Redirecting to dashboard...');
+                            window.location.href = '/dashboard';
+                        }, 1000);
+                    })
+                    .catch(function(error) {
+                        console.error('❌ Auto-login failed:', error);
+                        
+                        // Clear the impersonation flags
+                        localStorage.removeItem('impersonation_in_progress');
+                        localStorage.removeItem('impersonation_target_url');
+                        
+                        // Show error message
+                        showImpersonationError(error.message);
+                        
+                        // Clean URL parameters
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    });
+            } else {
+                console.log('⏳ Waiting for Firebase to load...');
+            }
+        }, 100);
+        
+        // Timeout after 10 seconds
+        setTimeout(function() {
+            clearInterval(checkFirebase);
+            if (localStorage.getItem('impersonation_in_progress') === 'true') {
+                console.error('❌ Firebase failed to load within 10 seconds');
+                showImpersonationError('Firebase failed to load. Please refresh the page.');
+                localStorage.removeItem('impersonation_in_progress');
+            }
+        }, 10000);
+        
+    } else {
+        console.log('ℹ️ No impersonation parameters found, showing normal login');
+    }
+    
+    // Helper function to show loading state
+    function showImpersonationLoading() {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'impersonation-loading';
+        loadingDiv.innerHTML = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center;">
+                <div style="background: white; padding: 30px; border-radius: 10px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                    <h3 style="margin: 0 0 10px 0; color: #333;">Logging you in...</h3>
+                    <p style="margin: 0; color: #666;">Please wait while we authenticate you.</p>
+                </div>
+            </div>
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+        `;
+        document.body.appendChild(loadingDiv);
+    }
+    
+    // Helper function to show error
+    function showImpersonationError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.innerHTML = `
+            <div style="position: fixed; top: 20px; right: 20px; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; z-index: 9999; max-width: 400px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <strong>Auto-login Failed:</strong><br>
+                ${message}
+                <button onclick="this.parentElement.parentElement.remove()" style="float: right; background: none; border: none; font-size: 18px; cursor: pointer; color: #721c24;">&times;</button>
+            </div>
+        `;
+        document.body.appendChild(errorDiv);
+    }
+})();
+</script>
+
     </body>
-
-
 
 </html>

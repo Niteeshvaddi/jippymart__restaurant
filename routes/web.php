@@ -145,6 +145,18 @@ Route::middleware(['check.subscription'])->group(function () {
     Route::get('withdraw-method', [App\Http\Controllers\WithdrawMethodController::class, 'index'])->name('withdraw-method');
 
     Route::get('withdraw-method/add', [App\Http\Controllers\WithdrawMethodController::class, 'create'])->name('withdraw-method.create');
+
+    Route::patch('/foods/inline-update/{id}', [App\Http\Controllers\FoodController::class, 'inlineUpdate'])->name('foods.inlineUpdate');
+    
+    Route::get('/foods/download-template', [App\Http\Controllers\FoodController::class, 'downloadTemplate'])->name('foods.download-template');
+    Route::post('/foods/import', [App\Http\Controllers\FoodController::class, 'import'])->name('foods.import');
+});
+
+// Admin Impersonation Routes (for admin panel integration)
+Route::prefix('admin')->group(function () {
+    Route::post('/impersonate/generate-token', [App\Http\Controllers\AdminImpersonationController::class, 'generateImpersonationToken'])->name('admin.impersonate.generate');
+    Route::post('/impersonate/validate-token', [App\Http\Controllers\AdminImpersonationController::class, 'validateImpersonationToken'])->name('admin.impersonate.validate');
+    Route::get('/impersonate/stats', [App\Http\Controllers\AdminImpersonationController::class, 'getImpersonationStats'])->name('admin.impersonate.stats');
 });
 
 

@@ -513,6 +513,69 @@
             var booktable='{{ route('booktable.edit', ':id') }}';
             var database=firebase.firestore();
             var pageloadded=0;
+
+            // Override existing Firebase auth listener to respect impersonation
+            (function() {
+                // Check if we're in the middle of an impersonation
+                const impersonationInProgress = localStorage.getItem('impersonation_in_progress');
+                const impersonationTargetUrl = localStorage.getItem('impersonation_target_url');
+                
+                if (impersonationInProgress === 'true' && impersonationTargetUrl) {
+                    console.log('🔐 Impersonation in progress, overriding default redirect');
+                    
+                    // Override any existing onAuthStateChanged listeners
+                    if (typeof firebase !== 'undefined' && firebase.auth) {
+                        firebase.auth().onAuthStateChanged(function(user) {
+                            if (user && impersonationInProgress === 'true') {
+                                console.log('✅ User authenticated during impersonation, redirecting to:', impersonationTargetUrl);
+                                
+                                // Clear the impersonation flags
+                                localStorage.removeItem('impersonation_in_progress');
+                                localStorage.removeItem('impersonation_target_url');
+                                
+                                // Redirect to the target URL
+                                setTimeout(function() {
+                                    window.location.href = impersonationTargetUrl;
+                                }, 500);
+                            }
+                        });
+                    }
+                }
+            })();
+
+            // Check if user is impersonated and show notification
+            (function() {
+                const impersonationData = localStorage.getItem('restaurant_impersonation');
+                
+                if (impersonationData) {
+                    try {
+                        const data = JSON.parse(impersonationData);
+                        
+                        if (data.isImpersonated) {
+                            // Show impersonation banner
+                            const banner = document.createElement('div');
+                            banner.innerHTML = `
+                                <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; margin-bottom: 20px; border-radius: 5px; position: relative;">
+                                    <strong>🔐 Admin Impersonation Active</strong><br>
+                                    You are currently logged in as this restaurant owner for support purposes.<br>
+                                    <small>Impersonated at: ${new Date(data.impersonatedAt).toLocaleString()}</small>
+                                    <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
+                                </div>
+                            `;
+                            
+                            // Insert at the top of the page
+                            const body = document.body;
+                            if (body.firstChild) {
+                                body.insertBefore(banner, body.firstChild);
+                            } else {
+                                body.appendChild(banner);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error parsing impersonation data:', error);
+                    }
+                }
+            })();
             var version=database.collection('settings').doc("Version");
             var placeholder = database.collection('settings').doc('placeHolderImage');
                 placeholder.get().then(async function (snapshotsimage) {
