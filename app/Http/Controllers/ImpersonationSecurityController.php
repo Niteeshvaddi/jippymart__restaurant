@@ -54,8 +54,8 @@ class ImpersonationSecurityController extends Controller
         
         // Security configurations
         $this->allowedOrigins = [
-            'https://admin.jippymart.in',
-            'https://restaurant.jippymart.in',
+            'https://admin.restaurant-system.com',
+            'https://restaurant.restaurant-system.com',
             'http://127.0.0.1:8000',
             'http://127.0.0.1:8001',
             'http://localhost:8000',

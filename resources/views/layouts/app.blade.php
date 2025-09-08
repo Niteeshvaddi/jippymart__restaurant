@@ -6,7 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <!-- CSRF Token -->
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title id="app_name">Jippy mart Restaurants</title>
+        <title id="app_name">Restaurant Management System</title>
         <!--<title id="app_name"><?php echo @$_COOKIE['meta_title']; ?></title>-->
         <link rel="icon" id="favicon" type="image/x-icon"
             href="<?php echo str_replace('images/', 'images%2F', @$_COOKIE['favicon']); ?>">
@@ -355,38 +355,200 @@
             <script>
             // Check if user is impersonated and show notification
             (function() {
+                // Only check for impersonation if we have proper session data
                 const impersonationData = localStorage.getItem('restaurant_impersonation');
+                const currentUser = @json(auth()->user());
                 
-                if (impersonationData) {
+                // Validate that we actually have impersonation data and it's not stale
+                if (impersonationData && currentUser) {
                     try {
                         const data = JSON.parse(impersonationData);
                         
-                        if (data.isImpersonated) {
-                            // Show impersonation banner
+                        // Additional validation: check if impersonation data is recent (within 24 hours)
+                        const impersonatedAt = new Date(data.impersonatedAt);
+                        const now = new Date();
+                        const hoursDiff = (now - impersonatedAt) / (1000 * 60 * 60);
+                        
+                        // Only show banner if:
+                        // 1. isImpersonated is true
+                        // 2. impersonatedAt is valid
+                        // 3. impersonation is recent (within 24 hours)
+                        // 4. we have valid admin data
+                        if (data.isImpersonated && 
+                            data.impersonatedAt && 
+                            hoursDiff < 24 && 
+                            data.admin_id && 
+                            data.admin_email) {
+                            
+                            // Show impersonation banner with improved UI
                             const banner = document.createElement('div');
+                            banner.id = 'impersonation-banner';
                             banner.innerHTML = `
-                                <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; margin-bottom: 20px; border-radius: 5px; position: relative; z-index: 1000;">
-                                    <strong>🔐 Admin Impersonation Active</strong><br>
-                                    You are currently logged in as this restaurant owner for support purposes.<br>
-                                    <small>Impersonated at: ${new Date(data.impersonatedAt).toLocaleString()}</small>
-                                    <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
+                                <div class="alert alert-warning alert-dismissible fade show impersonation-alert" role="alert" style="margin: 0; border-radius: 0; border-left: none; border-right: none;">
+                                    <div class="container-fluid">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-1 text-center">
+                                                <i class="fas fa-user-secret fa-2x text-warning"></i>
+                                            </div>
+                                            <div class="col-md-9">
+                                                <h6 class="alert-heading mb-1">
+                                                    <i class="fas fa-shield-alt"></i> Admin Impersonation Active
+                                                </h6>
+                                                <p class="mb-1">You are currently logged in as this restaurant owner for support purposes.</p>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock"></i> Impersonated at: ${impersonatedAt.toLocaleString()}
+                                                    <span class="mx-2">|</span>
+                                                    <i class="fas fa-user-tie"></i> Admin: ${data.admin_email}
+                                                </small>
+                                            </div>
+                                            <div class="col-md-2 text-right">
+                                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="endImpersonation()">
+                                                    <i class="fas fa-sign-out-alt"></i> End Session
+                                                </button>
+                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             `;
                             
-                            // Insert at the top of the main content
-                            const main = document.querySelector('main');
-                            if (main && main.firstChild) {
-                                main.insertBefore(banner, main.firstChild);
-                            } else if (main) {
-                                main.appendChild(banner);
+                            // Insert at the very top of the page
+                            const body = document.body;
+                            if (body.firstChild) {
+                                body.insertBefore(banner, body.firstChild);
+                            } else {
+                                body.appendChild(banner);
                             }
+                        } else {
+                            // Clean up stale impersonation data
+                            localStorage.removeItem('restaurant_impersonation');
                         }
                     } catch (error) {
                         console.error('Error parsing impersonation data:', error);
+                        // Clean up corrupted data
+                        localStorage.removeItem('restaurant_impersonation');
                     }
                 }
             })();
+            
+            // Function to end impersonation session
+            function endImpersonation() {
+                if (confirm('Are you sure you want to end the impersonation session?')) {
+                    // Clear impersonation data
+                    localStorage.removeItem('restaurant_impersonation');
+                    
+                    // Remove banner
+                    const banner = document.getElementById('impersonation-banner');
+                    if (banner) {
+                        banner.remove();
+                    }
+                    
+                    // Redirect to logout or admin panel
+                    window.location.href = '/logout';
+                }
+            }
+            
+            // Utility function to clear stale impersonation data
+            function clearStaleImpersonationData() {
+                const impersonationData = localStorage.getItem('restaurant_impersonation');
+                if (impersonationData) {
+                    try {
+                        const data = JSON.parse(impersonationData);
+                        const impersonatedAt = new Date(data.impersonatedAt);
+                        const now = new Date();
+                        const hoursDiff = (now - impersonatedAt) / (1000 * 60 * 60);
+                        
+                        // Clear data if older than 24 hours or missing required fields
+                        if (hoursDiff >= 24 || !data.admin_id || !data.admin_email) {
+                            localStorage.removeItem('restaurant_impersonation');
+                            console.log('Cleared stale impersonation data');
+                        }
+                    } catch (error) {
+                        localStorage.removeItem('restaurant_impersonation');
+                        console.log('Cleared corrupted impersonation data');
+                    }
+                }
+            }
+            
+            // Clear stale data on page load
+            clearStaleImpersonationData();
             </script>
+
+            <!-- Impersonation Banner Styles -->
+            <style>
+            .impersonation-alert {
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border: none;
+                border-bottom: 3px solid #ffc107;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                animation: slideDown 0.3s ease-out;
+            }
+            
+            .impersonation-alert .alert-heading {
+                color: #856404;
+                font-weight: 600;
+            }
+            
+            .impersonation-alert p {
+                color: #856404;
+                margin-bottom: 0.5rem;
+            }
+            
+            .impersonation-alert small {
+                color: #6c757d;
+            }
+            
+            .impersonation-alert .btn-outline-warning {
+                border-color: #ffc107;
+                color: #856404;
+                font-weight: 500;
+            }
+            
+            .impersonation-alert .btn-outline-warning:hover {
+                background-color: #ffc107;
+                border-color: #ffc107;
+                color: #212529;
+            }
+            
+            .impersonation-alert .btn-close {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                color: #856404;
+                opacity: 0.7;
+            }
+            
+            .impersonation-alert .btn-close:hover {
+                opacity: 1;
+            }
+            
+            @keyframes slideDown {
+                from {
+                    transform: translateY(-100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .impersonation-alert .col-md-1 {
+                    margin-bottom: 1rem;
+                }
+                
+                .impersonation-alert .col-md-2 {
+                    text-align: center !important;
+                    margin-top: 1rem;
+                }
+                
+                .impersonation-alert .btn {
+                    margin: 0.25rem;
+                }
+            }
+            </style>
 
             <div class="modal fade" id="notification_add_order" tabindex="-1" role="dialog" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered notification-main" role="document">
@@ -614,39 +776,7 @@
                 }
             })();
 
-            // Check if user is impersonated and show notification
-            (function() {
-                const impersonationData = localStorage.getItem('restaurant_impersonation');
-                
-                if (impersonationData) {
-                    try {
-                        const data = JSON.parse(impersonationData);
-                        
-                        if (data.isImpersonated) {
-                            // Show impersonation banner
-                            const banner = document.createElement('div');
-                            banner.innerHTML = `
-                                <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; margin-bottom: 20px; border-radius: 5px; position: relative;">
-                                    <strong>🔐 Admin Impersonation Active</strong><br>
-                                    You are currently logged in as this restaurant owner for support purposes.<br>
-                                    <small>Impersonated at: ${new Date(data.impersonatedAt).toLocaleString()}</small>
-                                    <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
-                                </div>
-                            `;
-                            
-                            // Insert at the top of the page
-                            const body = document.body;
-                            if (body.firstChild) {
-                                body.insertBefore(banner, body.firstChild);
-                            } else {
-                                body.appendChild(banner);
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error parsing impersonation data:', error);
-                    }
-                }
-            })();
+            // Duplicate impersonation script removed - using the improved version above
             var version=database.collection('settings').doc("Version");
             var placeholder = database.collection('settings').doc('placeHolderImage');
                 placeholder.get().then(async function (snapshotsimage) {

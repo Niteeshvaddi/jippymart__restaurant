@@ -114,7 +114,62 @@ Route::prefix('api/security')->middleware(['throttle:60,1'])->group(function () 
 
 Auth::routes();
 
+// Enhanced authentication routes with rate limiting
 Route::get('forgot-password', [App\Http\Controllers\Auth\LoginController::class, 'forgotPassword'])->name('forgot-password');
+Route::post('password/email', [App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])
+    ->middleware('throttle.login:3,1')
+    ->name('password.email');
+Route::get('password/reset/{token}', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+Route::post('password/reset', [App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])
+    ->middleware('throttle.login:3,1')
+    ->name('password.update');
+
+// Social login routes
+Route::get('auth/{provider}', [App\Http\Controllers\Auth\SocialLoginController::class, 'redirectToProvider'])
+    ->where('provider', 'google|facebook|github')
+    ->name('social.login');
+Route::get('auth/{provider}/callback', [App\Http\Controllers\Auth\SocialLoginController::class, 'handleProviderCallback'])
+    ->where('provider', 'google|facebook|github')
+    ->name('social.callback');
+
+// Two-Factor Authentication routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('2fa/setup', [App\Http\Controllers\Auth\TwoFactorController::class, 'showSetupForm'])->name('2fa.setup');
+    Route::post('2fa/enable', [App\Http\Controllers\Auth\TwoFactorController::class, 'enable'])->name('2fa.enable');
+    Route::post('2fa/disable', [App\Http\Controllers\Auth\TwoFactorController::class, 'disable'])->name('2fa.disable');
+    Route::post('2fa/regenerate-codes', [App\Http\Controllers\Auth\TwoFactorController::class, 'regenerateBackupCodes'])->name('2fa.regenerate-codes');
+});
+
+Route::middleware(['auth', '2fa'])->group(function () {
+    Route::get('2fa/verify', [App\Http\Controllers\Auth\TwoFactorController::class, 'showVerificationForm'])->name('2fa.verify');
+    Route::post('2fa/verify', [App\Http\Controllers\Auth\TwoFactorController::class, 'verify'])->name('2fa.verify.post');
+});
+
+// Passwordless authentication routes
+Route::get('passwordless/login', [App\Http\Controllers\Auth\PasswordlessController::class, 'showLoginForm'])->name('passwordless.login');
+Route::post('passwordless/send', [App\Http\Controllers\Auth\PasswordlessController::class, 'sendMagicLink'])
+    ->middleware('throttle.login:3,1')
+    ->name('passwordless.send');
+Route::get('passwordless/verify/{token}', [App\Http\Controllers\Auth\PasswordlessController::class, 'verifyMagicLink'])
+    ->name('passwordless.verify');
+
+Route::get('passwordless/register', [App\Http\Controllers\Auth\PasswordlessController::class, 'showRegisterForm'])->name('passwordless.register');
+Route::post('passwordless/register/send', [App\Http\Controllers\Auth\PasswordlessController::class, 'sendRegistrationLink'])
+    ->middleware('throttle.login:3,1')
+    ->name('passwordless.register.send');
+Route::get('passwordless/register/verify/{token}', [App\Http\Controllers\Auth\PasswordlessController::class, 'verifyRegistrationLink'])
+    ->name('passwordless.register.verify');
+
+// Impersonation management routes
+Route::post('impersonation/end', function() {
+    // Clear impersonation data from localStorage via JavaScript
+    return response()->json(['success' => true, 'message' => 'Impersonation session ended']);
+})->name('impersonation.end');
+
+// Debug route for impersonation testing (remove in production)
+Route::get('test-impersonation', function() {
+    return view('test-impersonation');
+})->name('test.impersonation');
 Route::post('store-firebase-service', [App\Http\Controllers\HomeController::class, 'storeFirebaseService'])->name('store-firebase-service');
 
 Route::middleware(['check.subscription'])->group(function () {

@@ -26,5 +26,5 @@ return [
     |
     */
 
-    'restaurant_panel_url' => env('RESTAURANT_PANEL_URL', 'https://restaurant.jippymart.in'),
+    'restaurant_panel_url' => env('RESTAURANT_PANEL_URL', 'https://restaurant.restaurant-system.com'),
 ];

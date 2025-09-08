@@ -52,8 +52,8 @@ return [
     |
     */
     'allowed_origins' => [
-        'https://admin.jippymart.in',
-        'https://restaurant.jippymart.in',
+        'https://admin.restaurant-system.com',
+        'https://restaurant.restaurant-system.com',
         'http://127.0.0.1:8000',
         'http://127.0.0.1:8001',
         'http://localhost:8000',
@@ -151,8 +151,8 @@ return [
         'add_security_headers' => env('IMPERSONATION_ADD_SECURITY_HEADERS', true),
         'cors_enabled' => env('IMPERSONATION_CORS_ENABLED', true),
         'cors_origins' => [
-            'https://admin.jippymart.in',
-            'https://restaurant.jippymart.in',
+            'https://admin.restaurant-system.com',
+            'https://restaurant.restaurant-system.com',
         ],
     ],
 
@@ -236,7 +236,7 @@ return [
         'failed_attempts_threshold' => env('IMPERSONATION_FAILED_ATTEMPTS_THRESHOLD', 5),
         'rate_limit_exceeded_threshold' => env('IMPERSONATION_RATE_LIMIT_THRESHOLD', 3),
         'suspicious_activity_threshold' => env('IMPERSONATION_SUSPICIOUS_ACTIVITY_THRESHOLD', 10),
-        'notification_email' => env('IMPERSONATION_ALERT_EMAIL', 'security@jippymart.in'),
+        'notification_email' => env('IMPERSONATION_ALERT_EMAIL', 'security@restaurant-system.com'),
     ],
 
     /*

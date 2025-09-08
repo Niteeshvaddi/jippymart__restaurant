@@ -7,7 +7,7 @@
         <h1 class="text-2xl font-bold mb-3">Privacy Policy</h1>
         <div id="privacy_policy" class="space-y-3">
 
-            <p>Welcome to <strong>JippyMart</strong>.</p>
+            <p>Welcome to <strong>Restaurant Management System</strong>.</p>
             <p>We value your <strong>privacy</strong> and are committed to protecting your <strong>personal information</strong>. This policy explains how we <strong>collect</strong>, <strong>use</strong>, <strong>disclose</strong>, and <strong>safeguard</strong> your information when you use our app.</p>
 
             <h5 class="font-semibold mt-3">Information We Collect</h5>
