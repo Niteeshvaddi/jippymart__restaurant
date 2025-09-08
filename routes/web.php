@@ -28,6 +28,24 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('lang/change', [App\Http\Controllers\LangController::class, 'change'])->name('changeLang');
 
+// Impersonation API routes
+Route::prefix('api')->group(function () {
+    // Check if there's an active impersonation session
+    Route::get('/check-impersonation', [App\Http\Controllers\ImpersonationController::class, 'checkImpersonation']);
+    
+    // Process the impersonation and log in the user
+    Route::post('/process-impersonation', [App\Http\Controllers\ImpersonationController::class, 'processImpersonation']);
+    
+    // End impersonation session
+    Route::post('/end-impersonation', [App\Http\Controllers\ImpersonationController::class, 'endImpersonation']);
+    
+    // Get current impersonation status
+    Route::get('/impersonation-status', [App\Http\Controllers\ImpersonationController::class, 'getImpersonationStatus']);
+    
+    // Debug endpoint to store test impersonation data
+    Route::post('/debug-store-impersonation', [App\Http\Controllers\ImpersonationController::class, 'debugStoreImpersonationData']);
+});
+
 Route::post('setToken', [App\Http\Controllers\Auth\AjaxController::class, 'setToken'])->name('setToken');
 Route::post('setSubcriptionFlag', [App\Http\Controllers\Auth\AjaxController::class, 'setSubcriptionFlag'])->name('setSubcriptionFlag');
 

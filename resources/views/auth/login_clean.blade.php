@@ -381,10 +381,12 @@ foreach ($countries as $keycountry => $valuecountry) {
                 measurementId: "G-ZYBQYPZWCF"
             };
 
-            // Initialize Firebase
+            // Initialize Firebase only if not already initialized
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
                 console.log('✅ Firebase initialized in restaurant panel');
+            } else {
+                console.log('✅ Firebase already initialized, skipping duplicate initialization');
             }
         </script>
 
