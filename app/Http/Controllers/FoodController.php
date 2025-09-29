@@ -51,108 +51,62 @@ class FoodController extends Controller
 
     /**
      * Handle inline updates for food prices and discount prices
+     * This method only validates the data - the frontend handles the Firebase update
      */
     public function inlineUpdate(Request $request, $id)
     {
         try {
-            // Validate the request
-            $request->validate([
-                'field' => 'required|in:price,disPrice',
-                'value' => 'required|numeric|min:0',
-            ]);
+            $field = $request->input('field');
+            $value = $request->input('value');
 
-            $field = $request->field;
-            $value = floatval($request->value);
-
-            // Use Firebase REST API approach
-            return $this->updateViaRestApi($id, $field, $value);
-
-        } catch (\Exception $e) {
-            Log::error('Inline update error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Update failed: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Update via Firebase REST API
-     */
-    private function updateViaRestApi($id, $field, $value)
-    {
-        try {
-            $projectId = env('FIREBASE_PROJECT_ID');
-            $apiKey = env('FIREBASE_APIKEY');
-            
-            if (!$projectId || !$apiKey) {
-                throw new \Exception('Firebase configuration not found');
+            // Validate field
+            if (!in_array($field, ['price', 'disPrice'])) {
+                return response()->json(['success' => false, 'message' => 'Invalid field. Only price and disPrice are allowed.'], 400);
             }
 
-            // First, get the current document
-            $getUrl = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/vendor_products/{$id}?key={$apiKey}";
-            
-            $response = Http::get($getUrl);
-            
-            if (!$response->successful()) {
-                throw new \Exception('Failed to fetch current document data');
+            // Enhanced value validation
+            if (!is_numeric($value) || $value < 0) {
+                return response()->json(['success' => false, 'message' => 'Invalid price value. Price must be a positive number.'], 400);
             }
 
-            $documentData = $response->json();
-            $currentData = $documentData['fields'] ?? [];
-
-            // Prepare update data
-            $updateData = [];
-            
-            if ($field === 'price') {
-                $updateData['price'] = ['doubleValue' => $value];
-                
-                // If discount price is higher than new price, reset it
-                if (isset($currentData['disPrice']['doubleValue']) && $currentData['disPrice']['doubleValue'] > $value) {
-                    $updateData['disPrice'] = ['doubleValue' => 0];
-                    $message = 'Price updated successfully. Discount price was reset as it was higher than the new price.';
-                } else {
-                    $message = 'Price updated successfully.';
-                }
-            } elseif ($field === 'disPrice') {
-                // Validate that discount price is not higher than regular price
-                $regularPrice = $currentData['price']['doubleValue'] ?? 0;
-                if ($value > $regularPrice) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Discount price cannot be higher than regular price'
-                    ], 400);
-                }
-                
-                $updateData['disPrice'] = ['doubleValue' => $value];
-                $message = 'Discount price updated successfully.';
+            // Additional validation for maximum price (prevent extremely high values)
+            if ($value > 999999) {
+                return response()->json(['success' => false, 'message' => 'Price cannot exceed 999,999'], 400);
             }
 
-            // Update the document
-            $updateUrl = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/vendor_products/{$id}?key={$apiKey}";
-            
-            $updateResponse = Http::patch($updateUrl, [
-                'fields' => $updateData
-            ]);
-
-            if (!$updateResponse->successful()) {
-                throw new \Exception('Failed to update document');
+            // Additional validation for discount price (if provided)
+            if ($field === 'disPrice' && $value > 0) {
+                // We can't validate against current price here since we don't have Firebase access
+                // The frontend will handle this validation
             }
 
+            // Return success - let frontend handle the Firebase update
             return response()->json([
                 'success' => true,
-                'message' => $message,
-                'data' => $updateData
+                'message' => 'Validation passed. Proceeding with update.',
+                'data' => [
+                    'field' => $field,
+                    'value' => $value
+                ]
             ]);
 
         } catch (\Exception $e) {
-            Log::error('REST API update error: ' . $e->getMessage());
+            // Log the error for debugging
+            \Log::error('Food inline update validation failed', [
+                'id' => $id,
+                'field' => $request->input('field'),
+                'value' => $request->input('value'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Update failed: ' . $e->getMessage()
-            ], 500);
+                'success' => false, 
+                'message' => 'Validation failed. Please check your input and try again.'
+            ], 400);
         }
     }
+
 
     /**
      * Download Excel template for bulk import

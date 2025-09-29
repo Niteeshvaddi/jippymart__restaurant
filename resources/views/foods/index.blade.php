@@ -331,9 +331,16 @@
                     '\'" class="rounded" style="width:50px" src="' + val.photo + '" alt="image"></td>');
             }
             html.push('<td data-url="' + route1 + '" class="redirecttopage">' + val.name + '</td>');
-            // Original Price Column - editable
-            if (val.hasOwnProperty('disPrice') && val.disPrice != '' && val.disPrice != '0' && val.disPrice != val.price) {
-                // Has discount - show original price with strikethrough
+            // Enhanced price display logic with proper validation
+            var hasDiscount = val.hasOwnProperty('disPrice') && 
+                             val.disPrice != '' && 
+                             val.disPrice != '0' && 
+                             val.disPrice != null && 
+                             parseFloat(val.disPrice) > 0 && 
+                             parseFloat(val.disPrice) < parseFloat(val.price);
+
+            if (hasDiscount) {
+                // Has valid discount - show original price with strikethrough
                 if (currencyAtRight) {
                     html.push('<td><span class="editable-price text-muted" style="text-decoration: line-through; cursor: pointer;" data-id="' + val.id + '" data-field="price" data-value="' + val.price + '">' + parseFloat(val.price).toFixed(decimal_degits) + '' + activeCurrency + '</span></td>');
                 } else {
@@ -346,7 +353,7 @@
                     html.push('<td><span class="editable-price text-success" style="cursor: pointer;" data-id="' + val.id + '" data-field="disPrice" data-value="' + val.disPrice + '">' + activeCurrency + '' + parseFloat(val.disPrice).toFixed(decimal_degits) + '</span></td>');
                 }
             } else {
-                // No discount - show regular price - editable
+                // No valid discount - show regular price - editable
                 if (currencyAtRight) {
                     html.push('<td><span class="editable-price text-success" style="cursor: pointer;" data-id="' + val.id + '" data-field="price" data-value="' + val.price + '">' + parseFloat(val.price).toFixed(decimal_degits) + '' + activeCurrency + '</span></td>');
                 } else {
@@ -492,8 +499,6 @@
                     newValue = 0;
                 }
 
-                console.log('Saving value:', { id: id, field: field, newValue: newValue });
-
                 // Remove input and show span
                 input.remove();
                 $this.show();
@@ -512,37 +517,67 @@
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(response) {
-                        console.log('Update response:', response);
                         if (response.success) {
-                            // Update the data attribute
-                            $this.data('value', newValue);
+                            // Backend validation passed, now update Firebase directly like publish toggle
+                            var updateData = {};
+                            updateData[field] = newValue.toString(); // Convert to string like edit page
 
-                            // Update the display
-                            var displayValue = newValue.toFixed(decimal_degits);
-                            if (currencyAtRight) {
-                                $this.text(displayValue + activeCurrency);
-                            } else {
-                                $this.text(activeCurrency + displayValue);
-                            }
-
-                            // Show success indicator
-                            $this.removeClass('text-info').addClass('text-success');
-                            setTimeout(function() {
-                                $this.removeClass('text-success');
-                            }, 1000);
-
-                            // If there's a message about discount price being reset, show it
-                            if (response.message && response.message.includes('discount price was reset')) {
-                                // Find and update the discount price cell if it exists
+                            // If updating price, check if discount price needs to be reset
+                            if (field === 'price') {
+                                // Get current discount price from the row
                                 var discountCell = $this.closest('tr').find('.editable-price[data-field="disPrice"]');
                                 if (discountCell.length > 0) {
-                                    discountCell.data('value', 0);
-                                    discountCell.text('-');
-                                    discountCell.removeClass('text-success').addClass('text-muted');
+                                    var currentDiscountValue = parseFloat(discountCell.data('value')) || 0;
+                                    if (currentDiscountValue > newValue) {
+                                        updateData['disPrice'] = '';
+                                    }
                                 }
                             }
+
+                            // Update Firebase directly like the publish toggle
+                            database.collection('vendor_products').doc(id).update(updateData).then(function(result) {
+                                // Update the data attribute
+                                $this.data('value', newValue);
+
+                                // Update the display
+                                var displayValue = newValue.toFixed(decimal_degits);
+                                if (currencyAtRight) {
+                                    $this.text(displayValue + activeCurrency);
+                                } else {
+                                    $this.text(activeCurrency + displayValue);
+                                }
+
+                                // Show success indicator
+                                $this.removeClass('text-info').addClass('text-success');
+                                setTimeout(function() {
+                                    $this.removeClass('text-success');
+                                }, 1000);
+
+                                // If discount price was reset, update the UI
+                                if (updateData.hasOwnProperty('disPrice') && updateData['disPrice'] === '') {
+                                    var discountCell = $this.closest('tr').find('.editable-price[data-field="disPrice"]');
+                                    if (discountCell.length > 0) {
+                                        discountCell.data('value', 0);
+                                        discountCell.text('-');
+                                        discountCell.removeClass('text-success').addClass('text-muted');
+                                    }
+                                }
+                            }).catch(function(error) {
+                                console.error('Firebase update failed:', error);
+                                alert('Update failed. Please try again.');
+                                
+                                // Revert to original value
+                                var originalValue = currentValue;
+                                var displayValue = originalValue.toFixed(decimal_degits);
+                                if (currencyAtRight) {
+                                    $this.text(displayValue + activeCurrency);
+                                } else {
+                                    $this.text(activeCurrency + displayValue);
+                                }
+                                $this.removeClass('text-info');
+                            });
                         } else {
-                            // Show error message
+                            // Backend validation failed
                             alert('Update failed: ' + response.message);
                             // Revert to original value
                             var originalValue = currentValue;
@@ -555,8 +590,7 @@
                             $this.removeClass('text-info');
                         }
                     },
-                    error: function(xhr, status, error) {
-                        console.error('Update error:', { xhr: xhr, status: status, error: error });
+                    error: function(xhr) {
                         var errorMessage = 'Update failed';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             errorMessage = xhr.responseJSON.message;
