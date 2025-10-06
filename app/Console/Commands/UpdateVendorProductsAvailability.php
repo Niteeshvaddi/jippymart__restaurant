@@ -12,6 +12,7 @@ class UpdateVendorProductsAvailability extends Command
 
     public function handle()
     {
+        
         $this->info('Updating vendor_products collection...');
 
         $factory = (new Factory)->withServiceAccount(storage_path('app/firebase/credentials.json'));
@@ -22,6 +23,8 @@ class UpdateVendorProductsAvailability extends Command
         $documents = $collection->documents();
 
         $updatedCount = 0;
+        $batchSize = 50; // Process in batches
+        $currentBatch = 0;
 
         foreach ($documents as $document) {
             if ($document->exists()) {
@@ -30,6 +33,13 @@ class UpdateVendorProductsAvailability extends Command
                     ['path' => 'isAvailable', 'value' => true]
                 ]);
                 $updatedCount++;
+                $currentBatch++;
+                
+                // Memory cleanup every batch
+                if ($currentBatch % $batchSize === 0) {
+                    $this->info("Processed {$currentBatch} documents...");
+                    gc_collect_cycles(); // Force garbage collection
+                }
             }
         }
 

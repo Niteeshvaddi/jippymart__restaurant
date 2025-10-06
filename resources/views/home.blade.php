@@ -178,12 +178,41 @@
     <script src="{{asset('js/chart.js')}}"></script>
     <script>
         jQuery("#data-table_processing").show();
-        var db = firebase.firestore();
-        var currency = db.collection('settings');
-        var currentCurrency = '';
-        var currencyAtRight = false;
-        var decimal_degits = 0;
-        var refCurrency = database.collection('currencies').where('isActive', '==', true);
+        
+        // Wait for Firebase to be ready before initializing dashboard
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+            console.log('✅ Firebase ready, initializing dashboard...');
+            initializeDashboard();
+        } else {
+            console.log('⏳ Waiting for Firebase to initialize...');
+            const checkFirebase = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+                    clearInterval(checkFirebase);
+                    console.log('✅ Firebase ready, initializing dashboard...');
+                    initializeDashboard();
+                }
+            }, 100);
+            
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                clearInterval(checkFirebase);
+                console.warn('⚠️ Firebase initialization timeout, proceeding anyway...');
+                initializeDashboard();
+            }, 5000);
+        }
+        
+        // Global variables for dashboard
+        var placeholderImage = '';
+        var commisionModel = false;
+        
+        function initializeDashboard() {
+            // Use global database reference if available, otherwise create new one
+            var db = window.database || firebase.firestore();
+            var currency = db.collection('settings');
+            var currentCurrency = '';
+            var currencyAtRight = false;
+            var decimal_degits = 0;
+            var refCurrency = db.collection('currencies').where('isActive', '==', true);
         refCurrency.get().then(async function (snapshots) {
             var currencyData = snapshots.docs[0].data();
             currentCurrency = currencyData.symbol;
@@ -196,10 +225,10 @@
         var vendorUserId = "<?php echo $id; ?>";
         var vendorId = null;
 
-        database.collection('users').doc(vendorUserId).get().then(async function(snapshots) {
+        db.collection('users').doc(vendorUserId).get().then(async function(snapshots) {
             var userData=snapshots.data();
             if(userData.hasOwnProperty('vendorID')&&userData.vendorID!=''&&userData.vendorID!=null) {
-                database.collection('settings').doc("document_verification_settings").get().then(async function(snapshots) {
+                db.collection('settings').doc("document_verification_settings").get().then(async function(snapshots) {
                     var documentVerification=snapshots.data();
                     if(documentVerification.isRestaurantVerification) {
                             if((userData.hasOwnProperty('isDocumentVerify')&&userData.isDocumentVerify==true)) {}else{
@@ -314,25 +343,33 @@ links.forEach(link => {
                         start = snapshots.docs[snapshots.docs.length - 1];
                         endarray.push(snapshots.docs[0]);
                     }
-                    $('#orderTable').DataTable({
-                        order: [],
-                        columnDefs: [
-                            {
-                                targets: 5,
-                                type: 'date',
-                                render: function (data) {
-                                    return data;
-                                }
-                            },
-                            {orderable: false, targets: [6]},
-                        ],
-                        order: [['5', 'desc']],
+                    // Check if table exists and has data before initializing DataTable
+                    if ($('#orderTable').length && $('#orderTable tbody tr').length > 0) {
+                        // Destroy existing DataTable if it exists
+                        if ($.fn.DataTable.isDataTable('#orderTable')) {
+                            $('#orderTable').DataTable().destroy();
+                        }
+                        
+                        $('#orderTable').DataTable({
+                            order: [],
+                            columnDefs: [
+                                {
+                                    targets: 5, // Order Date column (6th column, 0-indexed)
+                                    type: 'date',
+                                    render: function (data) {
+                                        return data;
+                                    }
+                                },
+                                {orderable: false, targets: [6]}, // Order Status column (7th column, 0-indexed)
+                            ],
+                            order: [['5', 'desc']], // Sort by Order Date column
                         "language": {
                             "zeroRecords": "{{trans("lang.no_record_found")}}",
                             "emptyTable": "{{trans("lang.no_record_found")}}"
                         },
                         responsive: true
-                    });
+                        });
+                    }
                 });
             });
         });
@@ -717,5 +754,7 @@ links.forEach(link => {
                 }
             })
         }
+        
+        } // Close initializeDashboard function
     </script>
-@endsection
+    @endsection

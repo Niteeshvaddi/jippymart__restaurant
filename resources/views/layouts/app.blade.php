@@ -25,6 +25,8 @@
         <link href="{{ asset('css/style_rtl.css') }}" rel="stylesheet">
         <?php } ?>
         <link href="{{ asset('css/icons/font-awesome/css/font-awesome.css') }}" rel="stylesheet">
+        
+        <!-- Preload only critical fonts that are used immediately -->
         <link href="{{ asset('assets/plugins/toast-master/css/jquery.toast.css') }}" rel="stylesheet">
         <link href="{{ asset('css/colors/blue.css') }}" rel="stylesheet">
         <link href="{{ asset('css/chosen.css') }}" rel="stylesheet">
@@ -682,41 +684,79 @@
 
         <!-- Firebase Configuration -->
         <script>
-            // Firebase configuration - Same as login page
-            const firebaseConfig = {
-                apiKey: "{{ env('FIREBASE_APIKEY', 'AIzaSyAf_lICoxPh8qKE1QnVkmQYTFJXKkYmRXU') }}",
-                authDomain: "{{ env('FIREBASE_AUTH_DOMAIN', 'jippymart-27c08.firebaseapp.com') }}",
-                databaseURL: "{{ env('FIREBASE_DATABASE_URL', 'https://jippymart-27c08-default-rtdb.firebaseio.com') }}",
-                projectId: "{{ env('FIREBASE_PROJECT_ID', 'jippymart-27c08') }}",
-                storageBucket: "{{ env('FIREBASE_STORAGE_BUCKET', 'jippymart-27c08.firebasestorage.app') }}",
-                messagingSenderId: "{{ env('FIREBASE_MESSAAGING_SENDER_ID', '592427852800') }}",
-                appId: "{{ env('FIREBASE_APP_ID', '1:592427852800:web:f74df8ceb2a4b597d1a4e5') }}",
-                measurementId: "{{ env('FIREBASE_MEASUREMENT_ID', 'G-ZYBQYPZWCF') }}"
-            };
-
-            // Initialize Firebase only if not already initialized
-            if (!firebase.apps.length) {
-                try {
-                    firebase.initializeApp(firebaseConfig);
-                    console.log('✅ Firebase initialized in main layout');
-                    
-                    // Initialize Firestore database globally
-                    window.database = firebase.firestore();
-                    window.storage = firebase.storage();
-                    window.auth = firebase.auth();
-                    
-                    console.log('✅ Firebase services initialized');
-                } catch (error) {
-                    console.error('❌ Firebase initialization error:', error);
-                }
+            // Check if Firebase is already loaded and initialized
+            if (typeof firebase === 'undefined') {
+                console.error('❌ Firebase SDK not loaded');
             } else {
-                console.log('✅ Firebase already initialized, skipping duplicate initialization');
+                // Firebase configuration - Same as login page
+                const firebaseConfig = {
+                    apiKey: "{{ env('FIREBASE_APIKEY', 'AIzaSyAf_lICoxPh8qKE1QnVkmQYTFJXKkYmRXU') }}",
+                    authDomain: "{{ env('FIREBASE_AUTH_DOMAIN', 'jippymart-27c08.firebaseapp.com') }}",
+                    databaseURL: "{{ env('FIREBASE_DATABASE_URL', 'https://jippymart-27c08-default-rtdb.firebaseio.com') }}",
+                    projectId: "{{ env('FIREBASE_PROJECT_ID', 'jippymart-27c08') }}",
+                    storageBucket: "{{ env('FIREBASE_STORAGE_BUCKET', 'jippymart-27c08.firebasestorage.app') }}",
+                    messagingSenderId: "{{ env('FIREBASE_MESSAAGING_SENDER_ID', '592427852800') }}",
+                    appId: "{{ env('FIREBASE_APP_ID', '1:592427852800:web:f74df8ceb2a4b597d1a4e5') }}",
+                    measurementId: "{{ env('FIREBASE_MEASUREMENT_ID', 'G-ZYBQYPZWCF') }}"
+                };
+
+                // Initialize Firebase only if not already initialized
+                if (!firebase.apps || firebase.apps.length === 0) {
+                    try {
+                        firebase.initializeApp(firebaseConfig);
+                        console.log('✅ Firebase initialized in main layout');
+                        
+                        // Initialize Firestore database globally
+                        window.database = firebase.firestore();
+                        window.storage = firebase.storage();
+                        window.auth = firebase.auth();
+                        
+                        console.log('✅ Firebase services initialized');
+                    } catch (error) {
+                        console.error('❌ Firebase initialization error:', error);
+                    }
+                } else {
+                    console.log('✅ Firebase already initialized, skipping duplicate initialization');
+                    // Still set up global references
+                    if (!window.database) {
+                        window.database = firebase.firestore();
+                        window.storage = firebase.storage();
+                        window.auth = firebase.auth();
+                    }
+                }
             }
         </script>
         <script src="https://unpkg.com/geofirestore/dist/geofirestore.js"></script>
         <script src="https://cdn.firebase.com/libs/geofire/5.0.1/geofire.min.js"></script>
         <script src="{{ asset('js/crypto-js.js') }}"></script>
         <script src="{{ asset('js/jquery.cookie.js') }}"></script>
+        <script>
+            // Fix jQuery cookie initialization
+            $(document).ready(function() {
+                // Initialize jQuery cookie with proper error handling
+                if (typeof $.cookie === 'undefined') {
+                    console.warn('jQuery cookie plugin not loaded properly');
+                }
+            });
+            
+            // Shared hosting optimizations
+            // Prevent memory leaks by cleaning up intervals and Firebase listeners
+            window.addEventListener('beforeunload', function() {
+                // Clear any running intervals
+                for (let i = 1; i < 10000; i++) {
+                    clearInterval(i);
+                    clearTimeout(i);
+                }
+                
+                // Clean up Firebase listeners
+                if (typeof orderListener !== 'undefined') {
+                    orderListener();
+                }
+                if (typeof tableListener !== 'undefined') {
+                    tableListener();
+                }
+            });
+        </script>
         <script src="{{ asset('js/jquery.validate.js') }}"></script>
         <script src="{{ asset('js/chosen.jquery.js') }}"></script>
         <script src="{{ asset('js/bootstrap-tagsinput.js') }}"></script>
@@ -977,7 +1017,8 @@
                     });
                 }
             });
-            database.collection('restaurant_orders').where('vendor.author',"==",cuser_id).onSnapshot(function(doc) {
+            // Optimize Firebase operations for shared hosting
+            var orderListener = database.collection('restaurant_orders').where('vendor.author',"==",cuser_id).onSnapshot(function(doc) {
                 if(pageloadded) {
                     doc.docChanges().forEach(function(change) {
                         val=change.doc.data();
@@ -1035,7 +1076,8 @@
                 }
             });
             var pageloadded_book=0;
-            database.collection('booked_table').where('vendor.author',"==",cuser_id).onSnapshot(function(doc) {
+            // Optimize Firebase operations for shared hosting
+            var tableListener = database.collection('booked_table').where('vendor.author',"==",cuser_id).onSnapshot(function(doc) {
                 if(pageloadded_book) {
                     doc.docChanges().forEach(function(change) {
                         val=change.doc.data();
@@ -1771,6 +1813,32 @@
             
             // Add status indicator after a short delay
             setTimeout(addImpersonationStatusIndicator, 1000);
+            
+            // Ensure Firebase is ready before dashboard operations
+            function ensureFirebaseReady() {
+                return new Promise((resolve) => {
+                    if (window.database && window.auth) {
+                        resolve();
+                    } else {
+                        const checkFirebase = setInterval(() => {
+                            if (window.database && window.auth) {
+                                clearInterval(checkFirebase);
+                                resolve();
+                            }
+                        }, 100);
+                        
+                        // Timeout after 5 seconds
+                        setTimeout(() => {
+                            clearInterval(checkFirebase);
+                            console.warn('Firebase initialization timeout');
+                            resolve();
+                        }, 5000);
+                    }
+                });
+            }
+            
+            // Make Firebase ready function globally available
+            window.ensureFirebaseReady = ensureFirebaseReady;
             
         })();
         </script>

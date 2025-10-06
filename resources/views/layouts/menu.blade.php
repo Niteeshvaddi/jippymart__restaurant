@@ -21,14 +21,42 @@
 <script src="{{ asset('js/jquery.validate.js') }}"></script>
 
 <script type="text/javascript">
-
-    var database=firebase.firestore();
-    var vendorUserId="<?php echo $id; ?>";
-    var documentVerificationEnable=false;
-    var commisionModel=false;
-    var subscriptionModel=false;
-    var vendorId=null;
-    var dineIn=false;
+    // Wait for Firebase to be ready before initializing menu
+    var firebaseWaitCount = 0;
+    var maxFirebaseWait = 50; // 5 seconds max (50 * 100ms)
+    
+    function waitForFirebase() {
+        firebaseWaitCount++;
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 && window.database) {
+            console.log('✅ Firebase ready, initializing menu...');
+            initializeMenu();
+        } else if (firebaseWaitCount < maxFirebaseWait) {
+            console.log('⏳ Waiting for Firebase to initialize... (' + firebaseWaitCount + '/' + maxFirebaseWait + ')');
+            setTimeout(waitForFirebase, 100);
+        } else {
+            console.warn('⚠️ Firebase initialization timeout, proceeding anyway...');
+            initializeMenu();
+        }
+    }
+    
+    // Start waiting for Firebase
+    waitForFirebase();
+    
+    function initializeMenu() {
+        console.log('🔍 Initializing menu...');
+        console.log('Firebase available:', typeof firebase !== 'undefined');
+        console.log('Global database available:', typeof window.database !== 'undefined');
+        
+        // Use global database reference if available, otherwise create new one
+        var database = window.database || firebase.firestore();
+        var vendorUserId="<?php echo $id; ?>";
+        var documentVerificationEnable=false;
+        var commisionModel=false;
+        var subscriptionModel=false;
+        var vendorId=null;
+        var dineIn=false;
+        
+        console.log('Vendor User ID:', vendorUserId);
 
 
     if(vendorUserId) {
@@ -71,7 +99,10 @@
                     <span class="hide-menu">{{ trans('lang.document_plural') }}</span>
                 </a>
             </li>`;
-            $('#sidebarnav').append(newLi);
+            console.log('📝 Appending menu items to sidebar...');
+        console.log('Menu items HTML length:', newLi.length);
+        $('#sidebarnav').append(newLi);
+        console.log('✅ Menu items appended successfully');
 
         }
     })
@@ -170,19 +201,22 @@
 
 
         }
+        console.log('📝 Appending menu items to sidebar...');
+        console.log('Menu items HTML length:', newLi.length);
         $('#sidebarnav').append(newLi);
+        console.log('✅ Menu items appended successfully');
 
-
-    });
-    function setCookie(name,value,days) {
-        var expires="";
-        if(days) {
-            var date=new Date();
-            date.setTime(date.getTime()+(days*24*60*60*1000));
-            expires="; expires="+date.toUTCString();
+        });
+        
+        function setCookie(name,value,days) {
+            var expires="";
+            if(days) {
+                var date=new Date();
+                date.setTime(date.getTime()+(days*24*60*60*1000));
+                expires="; expires="+date.toUTCString();
+            }
+            document.cookie=name+"="+(value||"")+expires+"; path=/";
         }
-        document.cookie=name+"="+(value||"")+expires+"; path=/";
-    }
-
-
+        
+    } // Close initializeMenu function
 </script>

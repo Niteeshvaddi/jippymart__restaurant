@@ -28,6 +28,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('lang/change', [App\Http\Controllers\LangController::class, 'change'])->name('changeLang');
 
+// System health monitoring routes
+Route::get('/health', [App\Http\Controllers\SystemHealthController::class, 'checkHealth'])->name('health.check');
+Route::post('/health/cleanup', [App\Http\Controllers\SystemHealthController::class, 'emergencyCleanup'])->name('health.cleanup');
+
 // Impersonation API routes
 Route::prefix('api')->group(function () {
     // Check if there's an active impersonation session
@@ -71,19 +75,19 @@ Route::get('subscription-plan', [App\Http\Controllers\SubscriptionController::cl
 
 Route::get('subscription-plan/checkout/{id}', [App\Http\Controllers\SubscriptionController::class, 'checkout'])->name('subscription-plans.checkout');
 
-Route::post('payment-proccessing', [App\Http\Controllers\SubscriptionController::class, 'orderProccessing'])->name('payment-proccessing');
+Route::post('payment-proccessing', [App\Http\Controllers\SubscriptionController::class, 'orderProccessing'])->name('payment-proccessing')->middleware('throttle:10,1');
 
 Route::get('pay-subscription', [App\Http\Controllers\SubscriptionController::class, 'proccesstopay'])->name('pay-subscription');
 
 Route::post('order-complete', [App\Http\Controllers\SubscriptionController::class, 'orderComplete'])->name('order-complete');
 
-Route::post('process-stripe', [App\Http\Controllers\SubscriptionController::class, 'processStripePayment'])->name('process-stripe');
+Route::post('process-stripe', [App\Http\Controllers\SubscriptionController::class, 'processStripePayment'])->name('process-stripe')->middleware('throttle:10,1');
 
 Route::post('process-paypal', [App\Http\Controllers\SubscriptionController::class, 'processPaypalPayment'])->name('process-paypal');
 
 Route::post('razorpaypayment', [App\Http\Controllers\SubscriptionController::class, 'razorpaypayment'])->name('razorpaypayment');
 
-Route::post('process-mercadopago', [App\Http\Controllers\SubscriptionController::class, 'processMercadoPagoPayment'])->name('process-mercadopago');
+Route::post('process-mercadopago', [App\Http\Controllers\SubscriptionController::class, 'processMercadoPagoPayment'])->name('process-mercadopago')->middleware('throttle:10,1');
 
 Route::get('success', [App\Http\Controllers\SubscriptionController::class, 'success'])->name('success');
 
@@ -243,7 +247,7 @@ Route::middleware(['check.subscription'])->group(function () {
     Route::patch('/foods/inline-update/{id}', [App\Http\Controllers\FoodController::class, 'inlineUpdate'])->name('foods.inlineUpdate');
     
     Route::get('/foods/download-template', [App\Http\Controllers\FoodController::class, 'downloadTemplate'])->name('foods.download-template');
-    Route::post('/foods/import', [App\Http\Controllers\FoodController::class, 'import'])->name('foods.import');
+    Route::post('/foods/import', [App\Http\Controllers\FoodController::class, 'import'])->name('foods.import')->middleware('throttle:5,1'); // 5 requests per minute
 });
 
 // Admin Impersonation Routes (for admin panel integration)

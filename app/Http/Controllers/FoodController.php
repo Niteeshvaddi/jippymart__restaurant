@@ -157,6 +157,7 @@ class FoodController extends Controller
     public function import(Request $request)
     {
         try {
+            
             $request->validate([
                 'file' => 'required|file|mimes:xls,xlsx|max:2048'
             ]);
@@ -172,8 +173,19 @@ class FoodController extends Controller
             $successCount = 0;
             $errorCount = 0;
             $errors = [];
-
-            foreach ($rows as $index => $row) {
+            
+            // Process in chunks to prevent memory issues
+            $chunkSize = 50; // Process 50 rows at a time
+            $chunks = array_chunk($rows, $chunkSize);
+            
+            foreach ($chunks as $chunkIndex => $chunk) {
+                // Check if connection is still alive
+                if (connection_aborted()) {
+                    break;
+                }
+                
+                foreach ($chunk as $rowIndex => $row) {
+                    $actualIndex = ($chunkIndex * $chunkSize) + $rowIndex;
                 try {
                     if (empty(array_filter($row))) {
                         continue; // Skip empty rows
@@ -183,7 +195,7 @@ class FoodController extends Controller
                     
                     // Validate required fields
                     if (empty($data['name']) || empty($data['price'])) {
-                        $errors[] = "Row " . ($index + 2) . ": Name and price are required";
+                        $errors[] = "Row " . ($actualIndex + 2) . ": Name and price are required";
                         $errorCount++;
                         continue;
                     }
@@ -223,8 +235,15 @@ class FoodController extends Controller
                     $successCount++;
 
                 } catch (\Exception $e) {
-                    $errors[] = "Row " . ($index + 2) . ": " . $e->getMessage();
+                    $errors[] = "Row " . ($actualIndex + 2) . ": " . $e->getMessage();
                     $errorCount++;
+                }
+                
+                // Clear memory after each chunk
+                if ($rowIndex === count($chunk) - 1) {
+                    unset($chunk);
+                    gc_collect_cycles(); // Force garbage collection
+                }
                 }
             }
 
